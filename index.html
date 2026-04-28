@@ -649,13 +649,20 @@ function printReceipt(){
 var _tblCache=[];
 function loadTables(){
   google.script.run.withSuccessHandler(function(tbs){
-    _tblCache=tbs;
+    _tblCache=tbs || [];
     var g=document.getElementById('tbl-grid');
-    if(!g)return;
+    if(!g) return;
+    if(!_tblCache.length){
+      g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--t2);font-size:14px">ไม่มีโต๊ะให้แสดงในขณะนี้<br>ลองกดรีเฟรชหรือสร้างโต๊ะในหน้า Settings</div>';
+      document.getElementById('tbl-avail').textContent = '0';
+      document.getElementById('tbl-busy').textContent = '0';
+      document.getElementById('tbl-occ').textContent = '0';
+      return;
+    }
     var avail=0,busy=0,occ=0;
     var selTbl=document.getElementById('table-sel').value;
     var hasCart=cart.length>0;
-    g.innerHTML=tbs.map(function(t,idx){
+    g.innerHTML=_tblCache.map(function(t,idx){
       var cls,icon,label,color;
       if(t.status==='available' && hasCart && String(t.no)===String(selTbl)){
         cls='tbl-ordering';icon='📝';label='กำลังสั่ง';color='#9B59B6';busy++
@@ -686,6 +693,10 @@ function loadTables(){
     document.getElementById('tbl-avail').textContent=avail;
     document.getElementById('tbl-busy').textContent=busy;
     document.getElementById('tbl-occ').textContent=occ;
+  }).withFailureHandler(function(e){
+    var g=document.getElementById('tbl-grid');
+    if(g) g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--r);font-size:14px">เกิดข้อผิดพลาดขณะโหลดโต๊ะ<br>'+((e&&e.message)?e.message:'ไม่สามารถเชื่อมต่อได้')+'</div>';
+    toast('❌ โหลดโต๊ะล้มเหลว','err');
   }).getTableStatus();
 }
 
