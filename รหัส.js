@@ -264,13 +264,14 @@ function getMenuForCustomer() {
       try {
         var fid = String(p.image_url).replace('drive:', '');
         imgData = getImageData(fid);
-      } catch(e) {}
+      } catch(e) { imgData = 'ERR:' + e.message; }
     }
     return {
       id: p.id, name: p.name, category: p.category,
       price: p.price, unit: p.unit, emoji: p.emoji,
       spice_default: p.spice_default, options: p.options,
-      image_data: imgData
+      image_data: imgData,
+      has_drive: p.image_url ? String(p.image_url).substring(0,40) : ''
     };
   });
   const sett = getSettings();
@@ -995,23 +996,14 @@ function syncFoodImages() {
   }
 }
 
-// Serve image as base64 with caching (called from menu page)
+// Serve image as base64 (simplified - no cache)
 function getImageData(fileId) {
   try {
-    var cache = CacheService.getScriptCache();
     var file = DriveApp.getFileById(fileId);
-    var lastUp = file.getLastUpdated().getTime();
-    var cacheKey = 'img_' + fileId + '_' + lastUp;
-    
-    // Check cache first
-    var cached = cache.get(cacheKey);
-    if (cached) return cached;
-    
     var blob = file.getBlob();
     var bytes = blob.getBytes();
     var type = blob.getContentType();
-    
-    // Convert PNG > 300KB to JPEG for smaller payload
+    // Convert PNG > 300KB to JPEG
     if (type === 'image/png' && bytes.length > 300000) {
       try {
         blob = blob.getAs('image/jpeg');
@@ -1019,17 +1011,9 @@ function getImageData(fileId) {
         type = 'image/jpeg';
       } catch(ce) {}
     }
-    
-    // Allow up to 8MB
-    if (bytes.length > 8000000) return '';
-    
-    var dataUri = 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
-    
-    // Cache for 6 hours (max 21600 seconds)
-    try { cache.put(cacheKey, dataUri, 21600); } catch(ce) {}
-    
-    return dataUri;
+    if (bytes.length > 8000000) return 'ERR:file_too_large_' + bytes.length;
+    return 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
   } catch(e) {
-    return '';
+    return 'ERR:' + e.message;
   }
 }

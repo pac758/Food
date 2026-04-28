@@ -205,11 +205,16 @@ function renderMenu() {
     document.getElementById('menu-area').innerHTML = '<div class="empty">ไม่มีรายการในหมวดนี้</div>';
     return;
   }
-  var h = '<div class="prod-grid">';
+  // DEBUG banner
+  var dbg = items.slice(0,5).map(function(p){return p.id+'|drv:'+String(p.has_drive||'')+'|img:'+(p.image_data?p.image_data.substring(0,30):'NONE')}).join(' / ');
+  var h = '<div style="background:#000;color:#0f0;padding:6px;font:11px monospace;word-break:break-all;margin-bottom:8px">'+dbg+'</div>';
+  h += '<div class="prod-grid">';
   items.forEach(function(p, i) {
     var visual;
     if (p.image_data && p.image_data.indexOf('data:') === 0) {
       visual = '<div class="prod-img" style="background-image:url(' + p.image_data + ')"></div>';
+    } else if (p.image_data && p.image_data.indexOf('ERR:') === 0) {
+      visual = '<div class="prod-emoji" style="font-size:10px;color:red">' + p.image_data + '</div>';
     } else {
       visual = '<div class="prod-emoji">'+(p.emoji||'🍽️')+'</div>';
     }
