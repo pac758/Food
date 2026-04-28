@@ -1382,6 +1382,12 @@
         <hr>
         <div style="color:var(--t2);font-size:12px">⚠️ กด Setup สำหรับตั้งค่าครั้งแรก</div>
         <button class="btn-s" onclick="runSetup()" style="width:fit-content">🔧 Setup Google Sheets</button>
+        <hr>
+        <div style="margin-top:12px;padding:12px;border:1px solid rgba(231,76,60,0.3);border-radius:8px;background:rgba(231,76,60,0.05)">
+          <div style="font-size:13px;font-weight:600;color:#E74C3C;margin-bottom:8px">⚠️ เครื่องมือทดสอบ</div>
+          <button style="background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px" onclick="if(confirm('ล้างข้อมูล Orders ของวันนี้ทั้งหมด?')){google.script.run.withSuccessHandler(function(r){alert('ล้างแล้ว: '+r.cleared+' orders, '+r.items+' items');loadTables()}).clearTestOrders()}">🗑️ ล้าง Orders วันนี้</button>
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">ลบ orders ทดสอบของวันนี้ทั้งหมด + reset counter</div>
+        </div>
         <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v2.0 Pro</div>
       </div>
     </div>

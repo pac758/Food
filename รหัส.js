@@ -735,3 +735,50 @@ function debugTableOrders(tableNo) {
   }
   return { table: tableNo, today: today, orders: results, totalOrders: results.length };
 }
+
+// Clear today's test orders and reset counter
+function clearTestOrders() {
+  const oSh = getSheet_(SHEET_ORDERS);
+  const iSh = getSheet_(SHEET_ITEMS);
+  const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+  
+  // Collect orderId of today's orders
+  const orders = oSh.getDataRange().getValues();
+  const todayIds = [];
+  const rowsToDelete = [];
+  
+  for (let i = orders.length - 1; i >= 1; i--) {
+    let rowDate = orders[i][1];
+    if (rowDate instanceof Date) rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+    if (String(rowDate) === today) {
+      todayIds.push(String(orders[i][0]).trim());
+      rowsToDelete.push(i + 1);
+    }
+  }
+  
+  // Delete order rows (reverse to avoid shifting)
+  rowsToDelete.forEach(r => oSh.deleteRow(r));
+  
+  // Delete matching items
+  const items = iSh.getDataRange().getValues();
+  const itemRowsToDelete = [];
+  for (let i = items.length - 1; i >= 1; i--) {
+    if (todayIds.includes(String(items[i][0]).trim())) {
+      itemRowsToDelete.push(i + 1);
+    }
+  }
+  itemRowsToDelete.forEach(r => iSh.deleteRow(r));
+  
+  // Reset counter
+  const settSh = getSheet_(SHEET_SETTINGS);
+  const settData = settSh.getDataRange().getValues();
+  for (let i = 1; i < settData.length; i++) {
+    if (String(settData[i][0]).trim() === 'last_order_num') {
+      settSh.getRange(i+1, 2).setValue(0);
+      break;
+    }
+  }
+  
+  SpreadsheetApp.flush();
+  return { cleared: rowsToDelete.length, items: itemRowsToDelete.length, date: today };
+}
