@@ -1832,10 +1832,11 @@
         body += '<div id="tbl-items-area" style="margin-top:8px;color:var(--t2);font-size:12px">กำลังโหลดรายการ...</div>';
         body += '</div>';
         acts = '';
-        if (t.status === 'new') acts += '<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\'' + t.orderId + '\',\'cooking\')">🔥 เริ่มทำ</button>';
-        if (t.status === 'cooking') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\'' + t.orderId + '\',\'served\')">✅ เสิร์ฟ</button>';
-        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="updateTblStatus(\'' + t.orderId + '\',\'completed\')">💰 เก็บเงิน/ว่าง</button>';
+        if (t.status === 'new') acts += '<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\'' + t.orderId + '\',\'cooking\',' + t.no + ')">🔥 เริ่มทำ</button>';
+        if (t.status === 'cooking') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\'' + t.orderId + '\',\'served\',' + t.no + ')">✅ เสิร์ฟ</button>';
+        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="updateTblStatus(\'' + t.orderId + '\',\'completed\',' + t.no + ')">💰 เก็บเงิน/ว่าง</button>';
         acts += '<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
+        acts += '<button style="margin-top:8px;background:none;border:1px solid #888;color:#888;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer;width:100%" onclick="google.script.run.withSuccessHandler(function(r){alert(JSON.stringify(r,null,2))}).debugTableOrders(' + t.no + ')">🔍 Debug Orders</button>';
       }
       document.getElementById('tbl-modal-title').textContent = '🪑 โต๊ะ ' + t.no;
       document.getElementById('tbl-modal-body').innerHTML = body;
@@ -1868,7 +1869,7 @@
       toast('🪑 เลือกโต๊ะ ' + no + ' แล้ว', 'ok');
     }
 
-    function updateTblStatus(oid, st) {
+    function updateTblStatus(oid, st, tblNo) {
       if (!oid) { toast('❌ ไม่พบ Order ID', 'err'); return; }
       closeM('tbl-modal');
       toast('⏳ กำลังอัปเดต...', '');
@@ -1885,7 +1886,7 @@
         .withFailureHandler(function(e) {
           toast('❌ Error: ' + (e && e.message || 'ไม่ทราบ'), 'err');
         })
-        .updateOrderStatus(oid, st);
+        .updateOrderStatus(oid, st, tblNo);
     }
 
     // PRODUCT MANAGEMENT

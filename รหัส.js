@@ -351,19 +351,23 @@ function saveOrder(orderData) {
   }
 }
 
-function updateOrderStatus(orderId, status) {
+function updateOrderStatus(orderId, status, tableNo) {
   const sh = getSheet_(SHEET_ORDERS);
   const data = sh.getDataRange().getValues();
   const oid = String(orderId).trim();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === oid) {
+  const tbl = tableNo ? String(tableNo).trim() : '';
+  // Reverse: find LATEST matching row
+  for (let i = data.length - 1; i >= 1; i--) {
+    var matchId = String(data[i][0]).trim() === oid;
+    var matchTbl = !tbl || String(data[i][3]).trim() === tbl;
+    if (matchId && matchTbl) {
       var oldStatus = String(data[i][12]);
       sh.getRange(i+1, 13).setValue(status);
       SpreadsheetApp.flush();
-      return { success: true, oldStatus: oldStatus, newStatus: status, row: i+1 };
+      return { success: true, oldStatus: oldStatus, newStatus: status, row: i+1, table: String(data[i][3]) };
     }
   }
-  return { success: false, message: 'ไม่พบ Order: ' + oid + ' (rows: ' + data.length + ')' };
+  return { success: false, message: 'ไม่พบ Order: ' + oid + ' table: ' + tbl };
 }
 
 function cancelOrder(orderId, reason) {
@@ -694,8 +698,33 @@ function getAllData() {
   try { prods = getProducts(); debug.push('prods=' + prods.length); } catch(e) { debug.push('getProd err=' + e); }
   if (!prods.length) {
     try { setupSheets(); debug.push('setup done'); } catch(e) { debug.push('setup err=' + e); }
-    try { prods = getProducts(); debug.push('retry prods=' + prods.length); } catch(e) { debug.push('retry err=' + e); }
+   try { prods = getProducts(); debug.push('retry prods=' + prods.length); } catch(e) { debug.push('retry err=' + e); }
   }
   try { sett = getSettings(); } catch(e) { debug.push('sett err=' + e); }
   return { products: prods, settings: sett, tables: [], todayReport: {}, debug: debug.join(' | ') };
+}
+
+function debugTableOrders(tableNo) {
+  const sh = getSheet_(SHEET_ORDERS);
+  const data = sh.getDataRange().getValues();
+  const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+  const tableStr = String(tableNo).trim();
+  const results = [];
+  for (let i = 1; i < data.length; i++) {
+    let rowDate = data[i][1];
+    if (rowDate instanceof Date) {
+      rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+    }
+    if (String(rowDate) === today && String(data[i][3]).trim() === tableStr) {
+      results.push({
+        row: i + 1,
+        orderId: String(data[i][0]),
+        date: String(rowDate),
+        table: String(data[i][3]),
+        status: String(data[i][12]),
+        total: Number(data[i][8]) || 0
+      });
+    }
+  }
+  return { table: tableNo, today: today, orders: results, totalOrders: results.length };
 }
