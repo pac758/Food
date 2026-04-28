@@ -298,12 +298,19 @@ function generateOrderId_() {
   const data = sh.getDataRange().getValues();
   let num = 0, row = -1;
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === 'last_order_num') { num = Number(data[i][1]) + 1; row = i+1; break; }
+    if (String(data[i][0]).trim() === 'last_order_num') { num = Number(data[i][1]) || 0; row = i+1; break; }
   }
-  if (row > 0) sh.getRange(row, 2).setValue(num);
+  num++;
+  if (row > 0) {
+    sh.getRange(row, 2).setValue(num);
+  } else {
+    // Create the setting if it doesn't exist
+    sh.appendRow(['last_order_num', num]);
+  }
+  SpreadsheetApp.flush();
   const d = new Date();
   const prefix = Utilities.formatDate(d, 'Asia/Bangkok', 'yyyyMMdd');
-  return `${prefix}-${String(num).padStart(4,'0')}`;
+  return prefix + '-' + String(num).padStart(4,'0');
 }
 
 function saveOrder(orderData) {
