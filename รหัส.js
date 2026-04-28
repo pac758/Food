@@ -516,65 +516,84 @@ function getReservations(dateStr) {
 }
 
 function getTableStatus() {
-  const settings = getSettings();
-  const count = Number(settings.table_count) || 10;
-  const orders = getSheet_(SHEET_ORDERS).getDataRange().getValues();
-  const reservations = getReservations();
-  const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+  try {
+    const settings = getSettings();
+    const count = Number(settings.table_count) || 10;
+    const orders = getSheet_(SHEET_ORDERS).getDataRange().getValues();
+    const reservations = getReservations();
+    const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
 
-  const tables = [];
-  for (let t = 1; t <= count; t++) {
-    const tableStr = String(t);
-    const activeOrder = orders.slice(1).find(r => {
-      let rowDate = r[1];
-      if (rowDate instanceof Date) {
-        rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
-      }
-      return String(rowDate) === today && String(r[3]).trim() === tableStr && ['new','cooking','served'].includes(String(r[12]));
-    });
-
-    if (activeOrder) {
-      const items = getOrderItems_(activeOrder[0]);
-      tables.push({
-        no: t,
-        status: String(activeOrder[12]),
-        orderId: activeOrder[0],
-        orderType: activeOrder[4],
-        total: Number(activeOrder[8]),
-        time: activeOrder[2],
-        itemCount: items.length,
-        items: items
+    const tables = [];
+    for (let t = 1; t <= count; t++) {
+      const tableStr = String(t);
+      const activeOrder = orders.slice(1).find(r => {
+        let rowDate = r[1];
+        if (rowDate instanceof Date) {
+          rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+        }
+        return String(rowDate) === today && String(r[3]).trim() === tableStr && ['new','cooking','served'].includes(String(r[12]));
       });
-      continue;
-    }
 
-    const reservation = reservations.find(r => String(r.tableNo).trim() === tableStr && ['reserved','arrived','seated'].includes(r.status));
-    if (reservation) {
+      if (activeOrder) {
+        const items = getOrderItems_(activeOrder[0]);
+        tables.push({
+          no: t,
+          status: String(activeOrder[12]),
+          orderId: activeOrder[0],
+          orderType: activeOrder[4],
+          total: Number(activeOrder[8]),
+          time: activeOrder[2],
+          itemCount: items.length,
+          items: items
+        });
+        continue;
+      }
+
+      const reservation = reservations.find(r => String(r.tableNo).trim() === tableStr && ['reserved','arrived','seated'].includes(r.status));
+      if (reservation) {
+        tables.push({
+          no: t,
+          status: reservation.status === 'reserved' ? 'reserved' : reservation.status === 'arrived' ? 'arrived' : 'seated',
+          reservationId: reservation.reservationId,
+          reservation: reservation,
+          total: 0,
+          time: reservation.time,
+          itemCount: 0,
+          items: []
+        });
+        continue;
+      }
+
       tables.push({
         no: t,
-        status: reservation.status === 'reserved' ? 'reserved' : reservation.status === 'arrived' ? 'arrived' : 'seated',
-        reservationId: reservation.reservationId,
-        reservation: reservation,
+        status: 'available',
+        orderId: null,
+        orderType: null,
         total: 0,
-        time: reservation.time,
+        time: '',
         itemCount: 0,
         items: []
       });
-      continue;
     }
-
-    tables.push({
-      no: t,
-      status: 'available',
-      orderId: null,
-      orderType: null,
-      total: 0,
-      time: '',
-      itemCount: 0,
-      items: []
-    });
+    return tables;
+  } catch (e) {
+    const settings = getSettings();
+    const count = Number(settings.table_count) || 10;
+    const fallback = [];
+    for (let t = 1; t <= count; t++) {
+      fallback.push({
+        no: t,
+        status: 'available',
+        orderId: null,
+        orderType: null,
+        total: 0,
+        time: '',
+        itemCount: 0,
+        items: []
+      });
+    }
+    return fallback;
   }
-  return tables;
 }
 
 // ── Reports ──────────────────────────────────────────────────
