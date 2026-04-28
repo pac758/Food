@@ -229,23 +229,16 @@
 
     function updateTblStatus(oid, st) {
       if (!oid) { toast('❌ ไม่พบ Order ID', 'err'); return; }
+      closeM('tbl-modal');
       toast('⏳ กำลังอัปเดต...', '');
       google.script.run
         .withSuccessHandler(function(r) {
           if (r && r.success) {
             toast('✅ ' + (r.oldStatus||'?') + ' → ' + (r.newStatus||st), 'ok');
-            loadTables();
-            google.script.run.withSuccessHandler(function(tbs) {
-              if (Array.isArray(tbs)) {
-                _tblCache = tbs;
-                var idx = _tblCache.findIndex(function(t) { return t.orderId === oid; });
-                if (idx !== -1) { closeM('tbl-modal'); tblClick(idx); }
-                else { closeM('tbl-modal'); }
-              }
-            }).getTableStatus();
           } else {
             toast('❌ ไม่สำเร็จ: ' + (r && r.message || 'ไม่ทราบสาเหตุ'), 'err');
           }
+          loadTables();
         })
         .withFailureHandler(function(e) {
           toast('❌ Error: ' + (e && e.message || 'ไม่ทราบ'), 'err');
