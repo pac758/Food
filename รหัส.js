@@ -530,13 +530,17 @@ function getTableStatus() {
     const tables = [];
     for (let t = 1; t <= count; t++) {
       const tableStr = String(t);
-      const activeOrder = orders.slice(1).find(r => {
+      const todayOrders = orders.slice(1).filter(r => {
         let rowDate = r[1];
         if (rowDate instanceof Date) {
           rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
         }
         return String(rowDate) === today && String(r[3]).trim() === tableStr && ['new','cooking','served'].includes(String(r[12]));
       });
+      // Priority: cooking/served orders first (active), then new
+      const activeOrder = todayOrders.filter(r => ['cooking','served'].includes(String(r[12]))).pop()
+                       || todayOrders.filter(r => String(r[12]) === 'new').pop()
+                       || null;
 
       if (activeOrder) {
         var orderTime = activeOrder[2];

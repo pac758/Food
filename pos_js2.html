@@ -234,9 +234,10 @@
       google.script.run
         .withSuccessHandler(function(r) {
           if (r && r.success) {
-            toast('✅ ' + (r.oldStatus||'?') + ' → ' + (r.newStatus||st), 'ok');
+            var msg = {'cooking':'🔥 เริ่มทำแล้ว','served':'✅ เสิร์ฟแล้ว','completed':'💰 เก็บเงินเรียบร้อย'};
+            toast(msg[st] || '✅ อัปเดตแล้ว', 'ok');
           } else {
-            toast('❌ ไม่สำเร็จ: ' + (r && r.message || 'ไม่ทราบสาเหตุ'), 'err');
+            toast('❌ ' + (r && r.message || 'ไม่สำเร็จ'), 'err');
           }
           loadTables();
         })
