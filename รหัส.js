@@ -1017,3 +1017,15 @@ function getImageData(fileId) {
     return 'ERR:' + e.message;
   }
 }
+
+// DIAGNOSTIC: Run from Editor to test Drive image access
+function testImageLoad() {
+  var prods = getProducts().filter(function(p){ return p.image_url; });
+  if (!prods.length) return 'ไม่มีสินค้าที่มี image_url';
+  var p = prods[0];
+  var fid = String(p.image_url).replace('drive:', '');
+  Logger.log('Testing product: ' + p.id + ' | image_url: ' + p.image_url + ' | fileId: ' + fid);
+  var result = getImageData(fid);
+  Logger.log('Result: ' + p.id + ' | dataLen: ' + result.length + ' | prefix: ' + result.substring(0, 50));
+  return 'product: ' + p.id + ' | dataLen: ' + result.length + ' | prefix: ' + result.substring(0, 50);
+}
