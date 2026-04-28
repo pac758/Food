@@ -8,6 +8,7 @@ const SHEET_PRODUCTS = 'Products';
 const SHEET_ORDERS   = 'Orders';
 const SHEET_ITEMS    = 'OrderItems';
 const SHEET_SETTINGS = 'Settings';
+const SHEET_RESERVATIONS = 'Reservations';
 const SHEET_STAFF    = 'Staff';
 
 // ── Entry Point ──────────────────────────────────────────────
@@ -155,6 +156,14 @@ function setupSheets() {
       ['promo_checkin_enabled','true'],
     ];
     defaults.forEach(r => s.appendRow(r));
+  }
+
+  // ─── Reservations ───
+  let r = ss.getSheetByName(SHEET_RESERVATIONS);
+  if (!r) r = ss.insertSheet(SHEET_RESERVATIONS);
+  if (!r.getRange('A1').getValue()) {
+    r.appendRow(['reservation_id','date','time','table_no','customer_name','party_size','contact','note','status','created_by','created_at']);
+    headerStyle(r, 11);
   }
 
   // ─── Staff ───
@@ -436,26 +445,94 @@ function getOrderDetail(orderId) {
   return order;
 }
 
+function generateReservationId_() {
+  const now = new Date();
+  const prefix = 'R' + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd');
+  const sh = getSheet_(SHEET_RESERVATIONS);
+  const rows = sh.getDataRange().getValues();
+  const seq = rows.length;
+  return prefix + '-' + String(seq).padStart(3, '0');
+}
+
+function saveReservation(data) {
+  const sh = getSheet_(SHEET_RESERVATIONS);
+  const reservationId = generateReservationId_();
+  const now = new Date();
+  const createdAt = Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd HH:mm:ss');
+  sh.appendRow([
+    reservationId,
+    data.date || Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd'),
+    data.time || '18:00',
+    data.tableNo || '-',
+    data.customerName || 'Guest',
+    Number(data.partySize) || 1,
+    data.contact || '',
+    data.note || '',
+    'reserved',
+    data.createdBy || '',
+    createdAt
+  ]);
+  return { success: true, reservationId };
+}
+
+function updateReservationStatus(reservationId, status) {
+  const sh = getSheet_(SHEET_RESERVATIONS);
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === reservationId) {
+      sh.getRange(i + 1, 9).setValue(status);
+      return { success: true };
+    }
+  }
+  return { success: false };
+}
+
+function cancelReservation(reservationId, reason) {
+  const sh = getSheet_(SHEET_RESERVATIONS);
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === reservationId) {
+      sh.getRange(i + 1, 9).setValue('cancelled');
+      const note = data[i][7] ? data[i][7] + ' | ยกเลิก: ' + reason : 'ยกเลิก: ' + reason;
+      sh.getRange(i + 1, 8).setValue(note);
+      return { success: true };
+    }
+  }
+  return { success: false };
+}
+
+function getReservations(dateStr) {
+  const sh = getSheet_(SHEET_RESERVATIONS);
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  const today = dateStr || Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+  return data.slice(1)
+    .filter(r => String(r[1]) === today && r[8] !== 'cancelled')
+    .map(r => ({
+      reservationId: r[0], date: r[1], time: r[2], tableNo: r[3],
+      customerName: r[4], partySize: Number(r[5]) || 1, contact: r[6],
+      note: r[7], status: r[8], createdBy: r[9], createdAt: r[10]
+    }));
+}
+
 function getTableStatus() {
   const settings = getSettings();
   const count = Number(settings.table_count) || 10;
-  const sh = getSheet_(SHEET_ORDERS);
-  const data = sh.getDataRange().getValues();
+  const orders = getSheet_(SHEET_ORDERS).getDataRange().getValues();
+  const reservations = getReservations();
   const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
 
   const tables = [];
   for (let t = 1; t <= count; t++) {
-    const activeOrder = data.slice(1).find(r => {
-      // Handle date as Date object or string
+    const tableStr = String(t);
+    const activeOrder = orders.slice(1).find(r => {
       let rowDate = r[1];
       if (rowDate instanceof Date) {
         rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
       }
-      const dateMatch = String(rowDate) === today;
-      const tableMatch = String(r[3]).trim() === String(t);
-      const statusMatch = ['new','cooking','served'].includes(String(r[12]));
-      return dateMatch && tableMatch && statusMatch;
+      return String(rowDate) === today && String(r[3]).trim() === tableStr && ['new','cooking','served'].includes(String(r[12]));
     });
+
     if (activeOrder) {
       const items = getOrderItems_(activeOrder[0]);
       tables.push({
@@ -468,18 +545,34 @@ function getTableStatus() {
         itemCount: items.length,
         items: items
       });
-    } else {
+      continue;
+    }
+
+    const reservation = reservations.find(r => String(r.tableNo).trim() === tableStr && ['reserved','arrived','seated'].includes(r.status));
+    if (reservation) {
       tables.push({
         no: t,
-        status: 'available',
-        orderId: null,
-        orderType: null,
+        status: reservation.status === 'reserved' ? 'reserved' : reservation.status === 'arrived' ? 'arrived' : 'seated',
+        reservationId: reservation.reservationId,
+        reservation: reservation,
         total: 0,
-        time: '',
+        time: reservation.time,
         itemCount: 0,
         items: []
       });
+      continue;
     }
+
+    tables.push({
+      no: t,
+      status: 'available',
+      orderId: null,
+      orderType: null,
+      total: 0,
+      time: '',
+      itemCount: 0,
+      items: []
+    });
   }
   return tables;
 }
