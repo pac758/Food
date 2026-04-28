@@ -94,16 +94,13 @@ function loadTables(){
         var cartTotal=cart.reduce(function(s,i){return s+i.qty*i.price},0);
         amt='<div class="tbl-amt">฿'+cartTotal+'</div>';
       }
-      return '<div class="tbl-card '+cls+'" style="border-color:'+color+';--tc:'+color+'" data-table-idx="'+idx+'">' +
+      return '<div class="tbl-card '+cls+'" style="border-color:'+color+';--tc:'+color+';cursor:pointer" onclick="tblClick('+idx+')">' +
         '<div class="tbl-dot" style="background:'+color+'"></div>'+
         '<div class="tbl-icon">'+icon+'</div>'+
         '<div class="tno">'+t.no+'</div>'+
         '<div class="tbl-label" style="color:'+color+'">'+label+'</div>'+ 
         time+items+amt+'</div>';
     }).join('');
-    Array.prototype.slice.call(g.querySelectorAll('.tbl-card')).forEach(function(card, idx){
-      card.addEventListener('click', function(){ tblClick(idx); });
-    });
     document.getElementById('tbl-avail').textContent=avail;
     document.getElementById('tbl-busy').textContent=busy;
     document.getElementById('tbl-occ').textContent=occ;
