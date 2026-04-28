@@ -996,13 +996,21 @@ function syncFoodImages() {
   }
 }
 
-// Serve image as base64 (simplified - no cache)
+// Serve image as base64 via Drive API v3 (bypasses DriveApp restriction)
 function getImageData(fileId) {
   try {
-    var file = DriveApp.getFileById(fileId);
-    var blob = file.getBlob();
+    var url = 'https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media';
+    var token = ScriptApp.getOAuthToken();
+    var response = UrlFetchApp.fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+    if (response.getResponseCode() !== 200) {
+      return 'ERR:HTTP' + response.getResponseCode() + ':' + response.getContentText().substring(0, 100);
+    }
+    var blob = response.getBlob();
     var bytes = blob.getBytes();
-    var type = blob.getContentType();
+    var type = blob.getContentType() || 'image/jpeg';
     // Convert PNG > 300KB to JPEG
     if (type === 'image/png' && bytes.length > 300000) {
       try {
