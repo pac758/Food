@@ -518,7 +518,7 @@ function getReservations(dateStr) {
 function getTableStatus() {
   try {
     const settings = getSettings();
-    const count = Math.max(1, Number(settings.table_count) || 10);
+    const count = Number(settings.table_count) || 10;
     const orders = getSheet_(SHEET_ORDERS).getDataRange().getValues();
     const reservations = getReservations();
     const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
@@ -535,14 +535,16 @@ function getTableStatus() {
       });
 
       if (activeOrder) {
+        const items = getOrderItems_(activeOrder[0]);
         tables.push({
           no: t,
           status: String(activeOrder[12]),
-          orderId: String(activeOrder[0]),
-          orderType: String(activeOrder[4]),
-          total: Number(activeOrder[8]) || 0,
-          time: String(activeOrder[2] || ''),
-          itemCount: 0
+          orderId: activeOrder[0],
+          orderType: activeOrder[4],
+          total: Number(activeOrder[8]),
+          time: activeOrder[2],
+          itemCount: items.length,
+          items: items
         });
         continue;
       }
@@ -551,15 +553,13 @@ function getTableStatus() {
       if (reservation) {
         tables.push({
           no: t,
-          status: String(reservation.status),
-          reservationId: String(reservation.reservationId),
-          customerName: String(reservation.customerName || ''),
-          partySize: Number(reservation.partySize) || 1,
-          contact: String(reservation.contact || ''),
-          resNote: String(reservation.note || ''),
+          status: reservation.status === 'reserved' ? 'reserved' : reservation.status === 'arrived' ? 'arrived' : 'seated',
+          reservationId: reservation.reservationId,
+          reservation: reservation,
           total: 0,
-          time: String(reservation.time || ''),
-          itemCount: 0
+          time: reservation.time,
+          itemCount: 0,
+          items: []
         });
         continue;
       }
@@ -567,21 +567,33 @@ function getTableStatus() {
       tables.push({
         no: t,
         status: 'available',
-        orderId: '',
+        orderId: null,
+        orderType: null,
         total: 0,
         time: '',
-        itemCount: 0
+        itemCount: 0,
+        items: []
       });
     }
     return tables;
   } catch (e) {
-    return [{ no: 1, status: 'available', orderId: '', total: 0, time: '', itemCount: 0, error: String(e) }];
+    const settings = getSettings();
+    const count = Number(settings.table_count) || 10;
+    const fallback = [];
+    for (let t = 1; t <= count; t++) {
+      fallback.push({
+        no: t,
+        status: 'available',
+        orderId: null,
+        orderType: null,
+        total: 0,
+        time: '',
+        itemCount: 0,
+        items: []
+      });
+    }
+    return fallback;
   }
-}
-
-function getTableDetail(orderId) {
-  if (!orderId) return { items: [] };
-  return { items: getOrderItems_(orderId) };
 }
 
 // ── Reports ──────────────────────────────────────────────────

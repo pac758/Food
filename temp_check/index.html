@@ -649,13 +649,7 @@ function printReceipt(){
 var _tblCache=[];
 function loadTables(){
   google.script.run.withSuccessHandler(function(tbs){
-    if(!Array.isArray(tbs)){
-      toast('DEBUG: response='+typeof tbs+': '+JSON.stringify(tbs).substring(0,80),'err');
-      _tblCache=[];
-    } else {
-      _tblCache=tbs;
-      if(tbs.length && tbs[0].error) toast('⚠️ Server: '+tbs[0].error,'err');
-    }
+    _tblCache=tbs || [];
     var g=document.getElementById('tbl-grid');
     if(!g) return;
     if(!_tblCache.length){
@@ -689,16 +683,13 @@ function loadTables(){
         var cartTotal=cart.reduce(function(s,i){return s+i.qty*i.price},0);
         amt='<div class="tbl-amt">฿'+cartTotal+'</div>';
       }
-      return '<div class="tbl-card '+cls+'" style="border-color:'+color+';--tc:'+color+'" data-table-idx="'+idx+'">' +
+      return '<div class="tbl-card '+cls+'" style="border-color:'+color+';--tc:'+color+'" onclick="tblClick('+idx+')">' +
         '<div class="tbl-dot" style="background:'+color+'"></div>'+
         '<div class="tbl-icon">'+icon+'</div>'+
         '<div class="tno">'+t.no+'</div>'+
-        '<div class="tbl-label" style="color:'+color+'">'+label+'</div>'+ 
+        '<div class="tbl-label" style="color:'+color+'">'+label+'</div>'+
         time+items+amt+'</div>';
     }).join('');
-    Array.prototype.slice.call(g.querySelectorAll('.tbl-card')).forEach(function(card, idx){
-      card.addEventListener('click', function(){ tblClick(idx); });
-    });
     document.getElementById('tbl-avail').textContent=avail;
     document.getElementById('tbl-busy').textContent=busy;
     document.getElementById('tbl-occ').textContent=occ;
@@ -759,34 +750,36 @@ function tblClick(idx){
     body+='<div style="padding:8px 0">';
     body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">จำนวนรายการ</span><span>'+cart.length+' รายการ</span></div>';
     body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ยอดรวม</span><span style="font-size:20px;font-weight:700;color:var(--p)">฿'+cartTotal+'</span></div>';
-    body+='</div>';
+    body+='<div style="margin-top:12px;font-size:12px;font-weight:600;color:var(--t2)">📋 รายการในตะกร้า:</div><div style="margin-top:6px">';
+    cart.forEach(function(i){body+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>'+i.qty+'x '+i.name+'</span><span>฿'+(i.qty*i.price)+'</span></div>'});
+    body+='</div></div>';
     acts='<button class="btn-save" onclick="closeM(\'tbl-modal\');nav(\'pos\')">🛒 กลับไปสั่งต่อ</button><button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
   } else if(t.status==='available'){
     body='<div style="text-align:center;padding:24px"><div style="font-size:48px;margin-bottom:12px">🪑</div><div style="color:#2ECC71;font-size:18px;font-weight:600">ว่าง — พร้อมรับลูกค้า</div></div>';
     acts='<button class="btn-save" onclick="selectTable('+t.no+')">🛒 เปิดโต๊ะ / สั่งอาหาร</button><button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
-  } else if(t.status==='reserved'||t.status==='arrived'||t.status==='seated'){
-    var stMap={'reserved':'📌 จองแล้ว','arrived':'👥 ลูกค้ามาแล้ว','seated':'🪑 ลูกค้านั่งแล้ว'};
+  } else {
+    var stMap={'reserved':'📌 จองแล้ว','arrived':'👥 ลูกค้ามาแล้ว','seated':'🪑 ลูกค้านั่งแล้ว','new':'🆕 รอครัวทำ','cooking':'🔥 กำลังทำอาหาร','served':'✅ เสิร์ฟแล้ว'};
     body='<div style="padding:8px 0">';
     body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">สถานะ</span><span style="font-weight:600">'+(stMap[t.status]||t.status)+'</span></div>';
-    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">เวลา</span><span>'+(t.time||'-')+'</span></div>';
-    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ลูกค้า</span><span>'+(t.customerName||'-')+'</span></div>';
-    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">จำนวน</span><span>'+(t.partySize||'-')+' คน</span></div>';
-    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">โทร</span><span>'+(t.contact||'-')+'</span></div>';
-    if(t.resNote) body+='<div style="padding:8px 0;font-size:12px;color:var(--t2)"><strong>โน้ต:</strong> '+t.resNote+'</div>';
+    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">เวลาจอง/สั่ง</span><span>'+(t.time||'-')+'</span></div>';
+    if(t.status==='reserved' || t.status==='arrived' || t.status==='seated'){
+      body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ลูกค้า</span><span>'+((t.reservation && t.reservation.customerName)||'-')+'</span></div>';
+      body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">จำนวน</span><span>'+((t.reservation && t.reservation.partySize)||'-')+' คน</span></div>';
+      body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">โทร</span><span>'+((t.reservation && t.reservation.contact)||'-')+'</span></div>';
+      if(t.reservation && t.reservation.note) body+='<div style="padding:8px 0;font-size:12px;color:var(--t2)"><strong>โน้ต:</strong> '+t.reservation.note+'</div>';
+    } else {
+      body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">จำนวนรายการ</span><span>'+(t.itemCount||0)+' รายการ</span></div>';
+      body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ยอดรวม</span><span style="font-size:20px;font-weight:700;color:var(--p)">฿'+(t.total||0)+'</span></div>';
+      if(t.items&&t.items.length){
+        body+='<div style="margin-top:12px;font-size:12px;font-weight:600;color:var(--t2)">📋 รายการอาหาร:</div><div style="margin-top:6px">';
+        t.items.forEach(function(i){body+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>'+i.qty+'x '+i.product_name+'</span><span>฿'+i.subtotal+'</span></div>'});
+        body+='</div>';
+      }
+    }
     body+='</div>';
     acts='';
     if(t.status==='reserved')acts+='<button class="btn-save" style="background:#3498DB" onclick="updateReservationStatus(\''+t.reservationId+'\',\'arrived\')">👥 ลูกค้ามาแล้ว</button>';
     if(t.status==='arrived')acts+='<button class="btn-save" style="background:#2ECC71" onclick="updateReservationStatus(\''+t.reservationId+'\',\'seated\')">🪑 นั่งแล้ว</button>';
-    acts+='<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
-  } else {
-    var stMap2={'new':'🆕 รอครัวทำ','cooking':'🔥 กำลังทำอาหาร','served':'✅ เสิร์ฟแล้ว'};
-    body='<div style="padding:8px 0">';
-    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">สถานะ</span><span style="font-weight:600">'+(stMap2[t.status]||t.status)+'</span></div>';
-    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">เวลาสั่ง</span><span>'+(t.time||'-')+'</span></div>';
-    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ยอดรวม</span><span style="font-size:20px;font-weight:700;color:var(--p)">฿'+(t.total||0)+'</span></div>';
-    body+='<div id="tbl-items-area" style="margin-top:8px;color:var(--t2);font-size:12px">กำลังโหลดรายการ...</div>';
-    body+='</div>';
-    acts='';
     if(t.status==='new')acts+='<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\''+t.orderId+'\',\'cooking\')">🔥 เริ่มทำ</button>';
     if(t.status==='cooking')acts+='<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\''+t.orderId+'\',\'served\')">✅ เสิร์ฟ</button>';
     if(t.status==='served')acts+='<button class="btn-save" style="background:#2ECC71" onclick="updateTblStatus(\''+t.orderId+'\',\'completed\')">💰 เก็บเงิน/ว่าง</button>';
@@ -796,18 +789,6 @@ function tblClick(idx){
   document.getElementById('tbl-modal-body').innerHTML=body;
   document.getElementById('tbl-modal-acts').innerHTML=acts;
   document.getElementById('tbl-modal').style.display='flex';
-  // Load items on-demand for order tables
-  if(t.orderId && ['new','cooking','served'].indexOf(t.status)!==-1){
-    google.script.run.withSuccessHandler(function(d){
-      var el=document.getElementById('tbl-items-area');
-      if(!el)return;
-      if(d&&d.items&&d.items.length){
-        var h='<div style="font-size:12px;font-weight:600;color:var(--t2)">📋 รายการอาหาร:</div>';
-        d.items.forEach(function(i){h+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>'+i.qty+'x '+i.product_name+'</span><span>฿'+i.subtotal+'</span></div>'});
-        el.innerHTML=h;
-      } else { el.textContent='ไม่พบรายการ'; }
-    }).getTableDetail(t.orderId);
-  }
 }
 
 function selectTable(no){
