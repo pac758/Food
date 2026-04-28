@@ -256,14 +256,23 @@ function getProducts() {
     .sort((a,b) => a.sort_order - b.sort_order);
 }
 
-// Customer menu - no cost/stock info
+// Customer menu - preload images server-side
 function getMenuForCustomer() {
-  const prods = getProducts().map(p => ({
-    id: p.id, name: p.name, category: p.category,
-    price: p.price, unit: p.unit, emoji: p.emoji,
-    spice_default: p.spice_default, options: p.options,
-    image_url: p.image_url || ''
-  }));
+  const prods = getProducts().map(p => {
+    var imgData = '';
+    if (p.image_url && String(p.image_url).indexOf('drive:') === 0) {
+      try {
+        var fid = String(p.image_url).replace('drive:', '');
+        imgData = getImageData(fid);
+      } catch(e) {}
+    }
+    return {
+      id: p.id, name: p.name, category: p.category,
+      price: p.price, unit: p.unit, emoji: p.emoji,
+      spice_default: p.spice_default, options: p.options,
+      image_data: imgData
+    };
+  });
   const sett = getSettings();
   return { products: prods, shopName: sett.shop_name || 'ลาบบ้านสวน' };
 }

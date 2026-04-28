@@ -170,12 +170,6 @@ document.getElementById('m-table-badge').textContent = 'โต๊ะ ' + tableNo
 function loadMenu() {
   google.script.run.withSuccessHandler(function(data) {
     products = data.products || [];
-    // DEBUG: show on page
-    var withImg = products.filter(function(p){return p.image_url});
-    var debugEl = document.createElement('div');
-    debugEl.style.cssText = 'background:#222;color:#0f0;padding:8px;font-size:12px;font-family:monospace;word-break:break-all';
-    debugEl.textContent = 'DEBUG: ' + withImg.length + ' images | ' + JSON.stringify(products.slice(0,3).map(function(p){return p.id+'='+String(p.image_url||'').substring(0,50)}));
-    document.getElementById('menu-area').before(debugEl);
     categories = [];
     var catSet = {};
     products.forEach(function(p) {
@@ -213,8 +207,12 @@ function renderMenu() {
   }
   var h = '<div class="prod-grid">';
   items.forEach(function(p, i) {
-    var hasImg = p.image_url && p.image_url.indexOf('drive:') === 0;
-    var visual = '<div class="prod-emoji" id="img-'+p.id+'">'+(p.emoji||'🍽️')+'</div>';
+    var visual;
+    if (p.image_data && p.image_data.indexOf('data:') === 0) {
+      visual = '<div class="prod-img" style="background-image:url(' + p.image_data + ')"></div>';
+    } else {
+      visual = '<div class="prod-emoji">'+(p.emoji||'🍽️')+'</div>';
+    }
     h += '<div class="prod-card" onclick="addItem('+i+')">' +
       visual +
       '<div class="prod-info">' +
@@ -227,25 +225,6 @@ function renderMenu() {
   });
   h += '</div>';
   document.getElementById('menu-area').innerHTML = h;
-  // Lazy load images from Drive
-  items.forEach(function(p) {
-    if (p.image_url && p.image_url.indexOf('drive:') === 0) {
-      var fileId = p.image_url.replace('drive:', '');
-      google.script.run
-        .withSuccessHandler(function(dataUri) {
-          if (dataUri && dataUri.indexOf('data:') === 0) {
-            var el = document.getElementById('img-' + p.id);
-            if (el) {
-              el.outerHTML = '<div class="prod-img" style="background-image:url(' + dataUri + ')"></div>';
-            }
-          }
-        })
-        .withFailureHandler(function(e) {
-          console.log('Image error for ' + p.id + ': ' + e.message);
-        })
-        .getImageData(fileId);
-    }
-  });
 }
 
 // Add item
