@@ -1,0 +1,284 @@
+<script>
+// CHECKOUT
+function checkout(){
+  if(!cart.length)return;
+  var sub=cart.reduce(function(s,i){return s+i.qty*i.price},0);
+  var disc=Number(document.getElementById('disc-input').value)||0;
+  var grand=Math.max(0,sub-disc);
+  var btn=document.getElementById('checkout-btn');btn.disabled=true;btn.textContent='กำลังบันทึก...';
+  var od={items:cart.map(function(i){return{id:i.id,name:i.name,price:i.price,qty:i.qty,spice:i.spice||'',options:i.options||'',note:i.note||''}}),
+    total:sub,discount:disc,discountType:disc>0?'manual':'',grandTotal:grand,payment:selPay_,
+    tableNo:document.getElementById('table-sel').value,orderType:document.getElementById('order-type').value,cashier:staffName,customerCount:1};
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){showReceipt(r,od);clearCart();document.getElementById('disc-input').value='';document.getElementById('table-sel').value='-';reloadProds()}
+    else toast('ผิดพลาด: '+r.message,'err');
+    btn.disabled=false;btn.textContent='ชำระเงิน';
+  }).withFailureHandler(function(e){toast('ผิดพลาด','err');btn.disabled=false;btn.textContent='ชำระเงิน'}).saveOrder(od);
+}
+function reloadProds(){google.script.run.withSuccessHandler(function(p){products=p;renderProds()}).getProducts()}
+
+// RECEIPT
+function showReceipt(r,od){
+  var w=32,ln='─'.repeat(w);
+  var ct=function(s){return' '.repeat(Math.max(0,Math.floor((w-s.length)/2)))+s};
+  var rc=ct(r.shopName)+'\n'+ct('ใบเสร็จรับเงิน')+'\n'+ln+'\n';
+  rc+='วันที่: '+r.date+'  เวลา: '+r.time+'\n';
+  rc+='เลขที่: '+r.orderId+'\n';
+  rc+='โต๊ะ: '+(od.tableNo||'-')+'  '+({['dine-in']:'ทานที่ร้าน','take-away':'กลับบ้าน'}[od.orderType]||od.orderType)+'\n'+ln+'\n';
+  od.items.forEach(function(i){
+    rc+=i.name+(i.spice?' ('+i.spice+')':'')+'\n';
+    rc+=('  '+i.qty+' x ฿'+i.price).padEnd(w-8)+'฿'+(i.qty*i.price)+'\n';
+  });
+  rc+=ln+'\n'+('ยอดรวม').padEnd(w-8)+'฿'+od.total+'\n';
+  if(od.discount>0)rc+=('ส่วนลด').padEnd(w-8)+'-฿'+od.discount+'\n';
+  rc+=('ยอดสุทธิ').padEnd(w-10)+'฿'+od.grandTotal+'\n';
+  rc+='ชำระ: '+od.payment+'\n'+ln+'\n';
+  rc+=ct('ขอบคุณที่อุดหนุน 🙏')+'\n'+ct('มาอีกนะครับ/ค่ะ ~')+'\n';
+  if(r.shopPhone)rc+=ct('📱 '+r.shopPhone)+'\n';
+  document.getElementById('receipt-box').textContent=rc;
+  if(od.payment==='โอน'&&settings.promptpay_id){
+    document.getElementById('qr-area').style.display='block';
+    document.getElementById('qr-img').src='https://promptpay.io/'+settings.promptpay_id+'/'+od.grandTotal+'.png';
+  }else{document.getElementById('qr-area').style.display='none'}
+  document.getElementById('receipt-modal').style.display='flex';
+  toast('✅ บันทึก Order สำเร็จ!','ok');
+}
+function printReceipt(){
+  var c=document.getElementById('receipt-box').textContent;
+  var w2=window.open('','','width=300,height=500');
+  w2.document.write('<pre style="font-family:monospace;font-size:12px;padding:10px">'+c+'</pre>');
+  w2.document.close();w2.print();
+}
+
+// ═══════════════ TABLES - Professional ═══════════════
+var _tblCache=[];
+function loadTables(){
+  google.script.run.withSuccessHandler(function(tbs){
+    _tblCache=tbs;
+    var g=document.getElementById('tbl-grid');
+    if(!g)return;
+    var avail=0,busy=0,occ=0;
+    var selTbl=document.getElementById('table-sel').value;
+    var hasCart=cart.length>0;
+    g.innerHTML=tbs.map(function(t,idx){
+      var cls,icon,label,color;
+      if(t.status==='available' && hasCart && String(t.no)===String(selTbl)){
+        cls='tbl-ordering';icon='📝';label='กำลังสั่ง';color='#9B59B6';busy++
+      }
+      else if(t.status==='available'){cls='avail';icon='🪑';label='ว่าง';color='#2ECC71';avail++}
+      else if(t.status==='new'){cls='tbl-new';icon='🆕';label='รอทำ';color='#F39C12';busy++}
+      else if(t.status==='cooking'){cls='tbl-cook';icon='🔥';label='กำลังทำ';color='#E67E22';occ++}
+      else if(t.status==='served'){cls='tbl-served';icon='✅';label='เสิร์ฟแล้ว';color='#3498DB';occ++}
+      else{cls='avail';icon='🪑';label='ว่าง';color='#2ECC71';avail++}
+      var time=t.time ? '<div class="tbl-time">'+t.time+'</div>' : '';
+      var items=t.itemCount ? '<div class="tbl-items">'+t.itemCount+' รายการ</div>' : '';
+      var amt=t.total ? '<div class="tbl-amt">฿'+t.total+'</div>' : '';
+      if(cls==='tbl-ordering'){
+        items='<div class="tbl-items">'+cart.length+' รายการ</div>';
+        var cartTotal=cart.reduce(function(s,i){return s+i.qty*i.price},0);
+        amt='<div class="tbl-amt">฿'+cartTotal+'</div>';
+      }
+      return '<div class="tbl-card '+cls+'" style="border-color:'+color+';--tc:'+color+'" onclick="tblClick('+idx+')">' +
+        '<div class="tbl-dot" style="background:'+color+'"></div>'+
+        '<div class="tbl-icon">'+icon+'</div>'+
+        '<div class="tno">'+t.no+'</div>'+
+        '<div class="tbl-label" style="color:'+color+'">'+label+'</div>'+
+        time+items+amt+'</div>';
+    }).join('');
+    document.getElementById('tbl-avail').textContent=avail;
+    document.getElementById('tbl-busy').textContent=busy;
+    document.getElementById('tbl-occ').textContent=occ;
+  }).getTableStatus();
+}
+
+function tblClick(idx){
+  var t=_tblCache[idx];
+  if(!t)return;
+  var body='',acts='';
+  var selTbl=document.getElementById('table-sel').value;
+  var isOrdering=(t.status==='available' && cart.length>0 && String(t.no)===String(selTbl));
+
+  if(isOrdering){
+    var cartTotal=cart.reduce(function(s,i){return s+i.qty*i.price},0);
+    body='<div style="text-align:center;padding:16px"><div style="font-size:48px;margin-bottom:8px">📝</div><div style="color:#9B59B6;font-size:18px;font-weight:600">กำลังสั่งอาหาร</div></div>';
+    body+='<div style="padding:8px 0">';
+    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">จำนวนรายการ</span><span>'+cart.length+' รายการ</span></div>';
+    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ยอดรวม</span><span style="font-size:20px;font-weight:700;color:var(--p)">฿'+cartTotal+'</span></div>';
+    body+='<div style="margin-top:12px;font-size:12px;font-weight:600;color:var(--t2)">📋 รายการในตะกร้า:</div><div style="margin-top:6px">';
+    cart.forEach(function(i){body+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>'+i.qty+'x '+i.name+'</span><span>฿'+(i.qty*i.price)+'</span></div>'});
+    body+='</div></div>';
+    acts='<button class="btn-save" onclick="closeM(\'tbl-modal\');nav(\'pos\')">🛒 กลับไปสั่งต่อ</button><button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
+  } else if(t.status==='available'){
+    body='<div style="text-align:center;padding:24px"><div style="font-size:48px;margin-bottom:12px">🪑</div><div style="color:#2ECC71;font-size:18px;font-weight:600">ว่าง — พร้อมรับลูกค้า</div></div>';
+    acts='<button class="btn-save" onclick="selectTable('+t.no+')">🛒 เปิดโต๊ะ / สั่งอาหาร</button><button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
+  } else {
+    var stMap={'new':'🆕 รอครัวทำ','cooking':'🔥 กำลังทำอาหาร','served':'✅ เสิร์ฟแล้ว'};
+    body='<div style="padding:8px 0">';
+    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">สถานะ</span><span style="font-weight:600">'+(stMap[t.status]||t.status)+'</span></div>';
+    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">เวลาสั่ง</span><span>'+(t.time||'-')+'</span></div>';
+    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">จำนวนรายการ</span><span>'+(t.itemCount||0)+' รายการ</span></div>';
+    body+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ยอดรวม</span><span style="font-size:20px;font-weight:700;color:var(--p)">฿'+(t.total||0)+'</span></div>';
+    if(t.items&&t.items.length){
+      body+='<div style="margin-top:12px;font-size:12px;font-weight:600;color:var(--t2)">📋 รายการอาหาร:</div><div style="margin-top:6px">';
+      t.items.forEach(function(i){body+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>'+i.qty+'x '+i.product_name+'</span><span>฿'+i.subtotal+'</span></div>'});
+      body+='</div>';
+    }
+    body+='</div>';
+    acts='';
+    if(t.status==='new')acts+='<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\''+t.orderId+'\',\'cooking\')">🔥 เริ่มทำ</button>';
+    if(t.status==='cooking')acts+='<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\''+t.orderId+'\',\'served\')">✅ เสิร์ฟ</button>';
+    if(t.status==='served')acts+='<button class="btn-save" style="background:#2ECC71" onclick="updateTblStatus(\''+t.orderId+'\',\'completed\')">💰 เก็บเงิน/ว่าง</button>';
+    acts+='<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
+  }
+  document.getElementById('tbl-modal-title').textContent='🪑 โต๊ะ '+t.no;
+  document.getElementById('tbl-modal-body').innerHTML=body;
+  document.getElementById('tbl-modal-acts').innerHTML=acts;
+  document.getElementById('tbl-modal').style.display='flex';
+}
+
+function selectTable(no){
+  closeM('tbl-modal');
+  var curTbl=document.getElementById('table-sel').value;
+  if(cart.length>0 && curTbl!=='-' && String(curTbl)!==String(no)){
+    if(confirm('ตะกร้ามีรายการจากโต๊ะ '+curTbl+' อยู่ '+cart.length+' รายการ\n\nกด OK = ล้างตะกร้า เริ่มสั่งใหม่\nกด Cancel = ย้ายรายการไปโต๊ะ '+no)){
+      clearCart();
+    }
+  }
+  document.getElementById('table-sel').value=no;
+  nav('pos');
+  toast('🪑 เลือกโต๊ะ '+no+' แล้ว','ok');
+}
+
+function updateTblStatus(oid,st){closeM('tbl-modal');google.script.run.withSuccessHandler(function(){toast('✅ อัปเดตสถานะแล้ว','ok');loadTables()}).updateOrderStatus(oid,st)}
+
+// PRODUCT MANAGEMENT
+function renderProdTable(){
+  var tb=document.getElementById('prod-tbody');
+  if(!products.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--t2)">ยังไม่มีสินค้า</td></tr>';return}
+  tb.innerHTML=products.map(function(p){
+    var profit=p.cost?'฿'+(p.price-p.cost):'—';
+    return'<tr><td><code style="font-size:10px;color:var(--t2)">'+p.id+'</code></td>'+
+      '<td><strong>'+p.emoji+' '+p.name+'</strong></td>'+
+      '<td><span class="bdg bdg-o">'+p.category+'</span></td>'+
+      '<td style="font-weight:600">฿'+p.price+'</td>'+
+      '<td><span class="bdg '+(p.stock<=0?'bdg-r':p.stock<=5?'bdg-w':'bdg-g')+'">'+p.stock+' '+p.unit+'</span></td>'+
+      '<td>'+profit+'</td>'+
+      '<td><button class="abtn" onclick=\'openProdModal('+JSON.stringify(p)+')\'>แก้ไข</button><button class="abtn del" onclick="delProd(\''+p.id+'\')">ลบ</button></td></tr>';
+  }).join('');
+}
+function openProdModal(p){
+  document.getElementById('pm-title').textContent=p?'แก้ไขสินค้า':'เพิ่มสินค้า';
+  document.getElementById('pm-id').value=p?p.id:'';
+  document.getElementById('pm-name').value=p?p.name:'';
+  document.getElementById('pm-cat').value=p?p.category:'';
+  document.getElementById('pm-emoji').value=p?p.emoji:'🍽️';
+  document.getElementById('pm-price').value=p?p.price:'';
+  document.getElementById('pm-cost').value=p?p.cost:'';
+  document.getElementById('pm-stock').value=p?p.stock:'';
+  document.getElementById('pm-unit').value=p?p.unit:'จาน';
+  document.getElementById('pm-sort').value=p?p.sort_order:99;
+  document.getElementById('pm-opts').value=p?p.options:'';
+  document.getElementById('prod-modal').style.display='flex';
+}
+function saveProd(){
+  var id=document.getElementById('pm-id').value;
+  var d={id:id,name:document.getElementById('pm-name').value.trim(),category:document.getElementById('pm-cat').value.trim()||'อื่นๆ',
+    price:document.getElementById('pm-price').value,cost:document.getElementById('pm-cost').value||0,
+    stock:document.getElementById('pm-stock').value||99,unit:document.getElementById('pm-unit').value.trim()||'จาน',
+    emoji:document.getElementById('pm-emoji').value||'🍽️',sort_order:document.getElementById('pm-sort').value||99,
+    options:document.getElementById('pm-opts').value.trim(),active:true,spice_default:''};
+  if(!d.name||!d.price){toast('กรุณากรอกชื่อและราคา','err');return}
+  var fn=id?'updateProduct':'addProduct';
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){closeM('prod-modal');toast(id?'✅ แก้ไขแล้ว':'✅ เพิ่มแล้ว','ok');
+      google.script.run.withSuccessHandler(function(p){products=p;renderCats();renderProds();renderProdTable()}).getProducts()}
+  })[fn](d);
+}
+function delProd(id){
+  if(!confirm('ยืนยันลบสินค้านี้?'))return;
+  google.script.run.withSuccessHandler(function(){toast('ลบแล้ว','ok');
+    google.script.run.withSuccessHandler(function(p){products=p;renderCats();renderProds();renderProdTable()}).getProducts()
+  }).deleteProduct(id);
+}
+
+// ORDERS
+function loadOrders(){
+  google.script.run.withSuccessHandler(function(ords){
+    var tb=document.getElementById('ord-tbody');
+    if(!ords.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--t2)">ไม่มีข้อมูล</td></tr>';return}
+    tb.innerHTML=ords.map(function(o){
+      var stCls={'new':'bdg-o','cooking':'bdg-w','served':'bdg-b','paid':'bdg-g','cancelled':'bdg-r'}[o.status]||'bdg-b';
+      var stTxt={'new':'ใหม่','cooking':'กำลังทำ','served':'เสิร์ฟแล้ว','paid':'ชำระแล้ว','cancelled':'ยกเลิก'}[o.status]||o.status;
+      return'<tr><td><strong>'+o.orderId+'</strong></td><td>'+o.time+'</td><td>'+o.tableNo+'</td>'+
+        '<td>'+(o.orderType==='dine-in'?'🪑':'🥡')+'</td>'+
+        '<td style="font-weight:600;color:var(--p)">฿'+o.grandTotal+'</td>'+
+        '<td>'+o.payment+'</td><td><span class="bdg '+stCls+'">'+stTxt+'</span></td>'+
+        '<td><button class="abtn" onclick="viewOrder(\''+o.orderId+'\')">ดู</button>'+
+        (o.status!=='cancelled'&&o.status!=='paid'?'<button class="abtn" onclick="markPaid(\''+o.orderId+'\')">✅</button><button class="abtn del" onclick="cancelOrd(\''+o.orderId+'\')">✕</button>':'')+'</td></tr>';
+    }).join('');
+  }).getOrderHistory(7);
+}
+function viewOrder(oid){
+  google.script.run.withSuccessHandler(function(o){
+    if(!o){toast('ไม่พบ Order','err');return}
+    var h='<div style="font-size:13px"><p><strong>เลขที่:</strong> '+o.orderId+'</p><p><strong>วันที่:</strong> '+o.date+' '+o.time+'</p>'+
+      '<p><strong>โต๊ะ:</strong> '+o.tableNo+' | <strong>ประเภท:</strong> '+o.orderType+'</p><hr style="border-color:var(--b);margin:8px 0">';
+    if(o.items)o.items.forEach(function(i){h+='<p>'+i.product_name+(i.spice?' ('+i.spice+')':'')+' x'+i.qty+' = ฿'+i.subtotal+'</p>'});
+    h+='<hr style="border-color:var(--b);margin:8px 0"><p><strong>ยอดสุทธิ: ฿'+o.grandTotal+'</strong> | ชำระ: '+o.payment+'</p></div>';
+    document.getElementById('om-title').textContent='📜 Order '+o.orderId;
+    document.getElementById('om-body').innerHTML=h;
+    document.getElementById('order-modal').style.display='flex';
+  }).getOrderDetail(oid);
+}
+function markPaid(oid){google.script.run.withSuccessHandler(function(){toast('✅ ชำระแล้ว','ok');loadOrders()}).updateOrderStatus(oid,'paid')}
+function cancelOrd(oid){
+  var reason=prompt('เหตุผลที่ยกเลิก:');if(!reason)return;
+  google.script.run.withSuccessHandler(function(){toast('ยกเลิกแล้ว','ok');loadOrders()}).cancelOrder(oid,reason);
+}
+
+// REPORTS
+function setToday(){var t=new Date().toISOString().split('T')[0];document.getElementById('rpt-s').value=t;document.getElementById('rpt-e').value=t}
+function setMonth(){var n=new Date(),s=new Date(n.getFullYear(),n.getMonth(),1).toISOString().split('T')[0],e=new Date(n.getFullYear(),n.getMonth()+1,0).toISOString().split('T')[0];document.getElementById('rpt-s').value=s;document.getElementById('rpt-e').value=e}
+function loadReport(){
+  var s=document.getElementById('rpt-s').value,e=document.getElementById('rpt-e').value;
+  if(!s||!e){toast('เลือกวันที่','err');return}
+  document.getElementById('rpt-stats').innerHTML='<div style="color:var(--t2);font-size:13px">กำลังโหลด...</div>';
+  google.script.run.withSuccessHandler(renderReport).getReport(s,e);
+}
+function renderReport(d){
+  var fm=function(n){return n.toLocaleString('th-TH')};
+  document.getElementById('rpt-stats').innerHTML=
+    '<div class="stat-c"><div class="lbl">💰 ยอดขาย</div><div class="val">฿'+fm(d.totalSales)+'</div></div>'+
+    '<div class="stat-c"><div class="lbl">🧾 ออร์เดอร์</div><div class="val">'+fm(d.orderCount)+'</div></div>'+
+    '<div class="stat-c"><div class="lbl">📊 เฉลี่ย/ออร์เดอร์</div><div class="val sm">฿'+fm(Math.round(d.avgOrder))+'</div></div>'+
+    '<div class="stat-c"><div class="lbl">👥 ลูกค้า</div><div class="val">'+fm(d.customerCount)+'</div></div>';
+  document.getElementById('top-tbody').innerHTML=(d.topProducts||[]).map(function(p,i){
+    return'<tr><td>'+(['🥇','🥈','🥉'][i]||'  ')+' '+p.name+'</td><td>'+p.qty+'</td><td style="color:var(--p);font-weight:600">฿'+fm(p.revenue)+'</td></tr>'
+  }).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--t2)">ไม่มีข้อมูล</td></tr>';
+  var pm=d.payMap||{},pt=Object.values(pm).reduce(function(s,v){return s+v},0)||1;
+  document.getElementById('pay-chart').innerHTML=Object.entries(pm).map(function(e){var pct=Math.round(e[1]/pt*100);
+    return'<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+e[0]+'</span><span>฿'+fm(e[1])+' ('+pct+'%)</span></div>'+
+    '<div style="height:5px;background:var(--c);border-radius:3px"><div style="height:100%;width:'+pct+'%;background:var(--p);border-radius:3px"></div></div></div>'
+  }).join('')||'<div style="color:var(--t2);font-size:12px">ไม่มีข้อมูล</div>';
+  var dl=d.daily||[],mx=Math.max.apply(null,dl.map(function(x){return x.sales}).concat([1]));
+  document.getElementById('daily-chart').innerHTML=dl.length?'<div style="display:flex;gap:4px;align-items:flex-end;height:80px">'+
+    dl.map(function(x){var h=Math.round(x.sales/mx*70);return'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px" title="'+x.date+': ฿'+fm(x.sales)+'">'+
+      '<div style="height:'+h+'px;width:100%;background:var(--p);border-radius:3px 3px 0 0;min-height:2px"></div>'+
+      '<div style="font-size:8px;color:var(--t2)">'+x.date.slice(5)+'</div></div>'}).join('')+'</div>':'<div style="color:var(--t2);font-size:12px">ไม่มีข้อมูล</div>';
+}
+
+// SETTINGS
+function saveSettings(){
+  var pairs=[['shop_name',document.getElementById('s-name').value.trim()],['shop_phone',document.getElementById('s-phone').value.trim()],
+    ['promptpay_id',document.getElementById('s-pp').value.trim()],['table_count',document.getElementById('s-tables').value],
+    ['promo_student_discount',document.getElementById('s-studisc').value],['promo_family_price',document.getElementById('s-famprice').value]];
+  google.script.run.withSuccessHandler(function(){
+    pairs.forEach(function(p){settings[p[0]]=p[1]});applySettings();fillTableSel();toast('✅ บันทึกแล้ว','ok');
+  }).saveMultipleSettings(pairs);
+}
+function runSetup(){google.script.run.withSuccessHandler(function(){toast('✅ Setup สำเร็จ! รีโหลด...','ok');setTimeout(function(){location.reload()},1500)}).setupSheets()}
+
+// UTILS
+function closeM(id){document.getElementById(id).style.display='none'}
+function toast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='show '+(type||'');setTimeout(function(){t.className=''},2500)}
+</script>

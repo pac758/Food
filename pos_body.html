@@ -1,0 +1,215 @@
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <div style="font-size:48px;margin-bottom:8px">🍜</div>
+    <h1>ลาบบ้านสวน</h1>
+    <p>กรุณาใส่ PIN เพื่อเข้าสู่ระบบ</p>
+    <div class="pin-dots"><div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div><div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div></div>
+    <div class="pin-pad">
+      <button class="pin-btn" onclick="pinKey('1')">1</button><button class="pin-btn" onclick="pinKey('2')">2</button><button class="pin-btn" onclick="pinKey('3')">3</button>
+      <button class="pin-btn" onclick="pinKey('4')">4</button><button class="pin-btn" onclick="pinKey('5')">5</button><button class="pin-btn" onclick="pinKey('6')">6</button>
+      <button class="pin-btn" onclick="pinKey('7')">7</button><button class="pin-btn" onclick="pinKey('8')">8</button><button class="pin-btn" onclick="pinKey('9')">9</button>
+      <button class="pin-btn del" onclick="pinDel()">⌫ ลบ</button><button class="pin-btn" onclick="pinKey('0')">0</button><button class="pin-btn ok" onclick="pinSubmit()">OK</button>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar" style="display:none">
+  <div class="logo">🍜 <span id="shop-label">ลาบบ้านสวน</span></div>
+  <button class="tab-btn active" onclick="nav('pos')" data-p="pos">🛒 ขาย</button>
+  <button class="tab-btn" onclick="nav('tables')" data-p="tables">🪑 โต๊ะ</button>
+  <button class="tab-btn" onclick="nav('products')" data-p="products">📦 สินค้า</button>
+  <button class="tab-btn" onclick="nav('orders')" data-p="orders">📜 ประวัติ</button>
+  <button class="tab-btn" onclick="nav('report')" data-p="report">📊 รายงาน</button>
+  <button class="tab-btn" onclick="nav('settings')" data-p="settings">⚙️</button>
+  <span id="staff-name"></span>
+  <div id="clock"></div>
+</div>
+
+<!-- PAGE: POS -->
+<div id="page-pos" class="page">
+  <div id="pos-left">
+    <div id="cat-bar"><button class="cat-pill active" onclick="fCat('all',this)">ทั้งหมด</button></div>
+    <div id="search-bar"><input type="text" id="sq" placeholder="🔍 ค้นหาเมนู..." oninput="renderProds()"></div>
+    <div id="prod-grid"></div>
+  </div>
+  <div id="pos-right">
+    <div class="cart-hd">
+      <h3>🛒 รายการสั่ง</h3>
+      <select id="order-type" style="margin-right:4px"><option value="dine-in">🪑 ทานที่ร้าน</option><option value="take-away">🥡 กลับบ้าน</option></select>
+      <select id="table-sel"><option value="-">โต๊ะ -</option></select>
+      <button onclick="clearCart()" style="margin-left:4px;color:var(--r)">✕ ล้าง</button>
+    </div>
+    <div id="cart-items"><div class="cart-empty"><div class="ic">🛒</div><div>เลือกเมนูเพื่อเริ่มสั่ง</div></div></div>
+    <div id="cart-foot">
+      <div class="trow"><span>ยอดรวม</span><span class="v" id="v-sub">฿0</span></div>
+      <div class="disc-row">
+        <span style="font-size:11px;color:var(--t2);line-height:28px">ส่วนลด ฿</span>
+        <input type="number" id="disc-input" placeholder="0" min="0" oninput="calcTotal()">
+        <button onclick="applyStudentDisc()">🎓 -10%</button>
+      </div>
+      <div class="tgrand"><div class="l">ยอดสุทธิ</div><div class="v" id="v-grand">฿0</div></div>
+      <div id="pay-btns">
+        <button class="pay-b active" onclick="selPay(this,'เงินสด')"><span>💵</span>เงินสด</button>
+        <button class="pay-b" onclick="selPay(this,'โอน')"><span>📱</span>โอน/QR</button>
+        <button class="pay-b" onclick="selPay(this,'บัตร')"><span>💳</span>บัตร</button>
+      </div>
+      <button id="checkout-btn" onclick="checkout()" disabled>ชำระเงิน</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: TABLES -->
+<div id="page-tables" class="page" style="flex-direction:column">
+  <div class="ipage">
+    <div class="phdr">
+      <div class="ptitle">🪑 จัดการโต๊ะ</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:12px;font-size:11px;color:var(--t2)">
+          <span>🟢 ว่าง <span id="tbl-avail">0</span></span>
+          <span>🟡 สั่งแล้ว <span id="tbl-busy">0</span></span>
+          <span>🔴 ไม่ว่าง <span id="tbl-occ">0</span></span>
+        </div>
+        <button class="btn-s" onclick="loadTables()">🔄 รีเฟรช</button>
+      </div>
+    </div>
+    <div class="tbl-grid" id="tbl-grid"></div>
+  </div>
+</div>
+
+<!-- TABLE DETAIL MODAL -->
+<div id="tbl-modal" class="modal-ov" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <h3 id="tbl-modal-title">โต๊ะ 1</h3>
+    <div id="tbl-modal-body"></div>
+    <div class="macts" id="tbl-modal-acts"></div>
+  </div>
+</div>
+
+<!-- PAGE: PRODUCTS -->
+<div id="page-products" class="page" style="flex-direction:column">
+  <div class="ipage">
+    <div class="phdr"><div class="ptitle">📦 จัดการสินค้า/สต็อก</div><button class="btn-p" onclick="openProdModal()">+ เพิ่มสินค้า</button></div>
+    <div class="twrap"><table><thead><tr><th>ID</th><th>ชื่อ</th><th>หมวด</th><th>ราคา</th><th>สต็อก</th><th>ต้นทุน</th><th>จัดการ</th></tr></thead><tbody id="prod-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- PAGE: ORDERS -->
+<div id="page-orders" class="page" style="flex-direction:column">
+  <div class="ipage">
+    <div class="phdr"><div class="ptitle">📜 ประวัติ Order</div><button class="btn-s" onclick="loadOrders()">🔄 รีเฟรช</button></div>
+    <div class="twrap"><table><thead><tr><th>เลขที่</th><th>เวลา</th><th>โต๊ะ</th><th>ประเภท</th><th>ยอด</th><th>ชำระ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="ord-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- PAGE: REPORT -->
+<div id="page-report" class="page" style="flex-direction:column;overflow:auto">
+  <div class="ipage" style="overflow-y:auto">
+    <div class="phdr" style="flex-wrap:wrap;gap:8px">
+      <div class="ptitle">📊 รายงาน</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="date" id="rpt-s" class="fg" style="width:auto;padding:6px 8px;background:var(--c);border:1px solid var(--b);border-radius:6px;color:var(--t);font-size:12px">
+        <span style="color:var(--t2);font-size:12px">ถึง</span>
+        <input type="date" id="rpt-e" class="fg" style="width:auto;padding:6px 8px;background:var(--c);border:1px solid var(--b);border-radius:6px;color:var(--t);font-size:12px">
+        <button class="btn-p" onclick="loadReport()">ดูรายงาน</button>
+        <button class="btn-s" onclick="setToday()">วันนี้</button>
+        <button class="btn-s" onclick="setMonth()">เดือนนี้</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="rpt-stats"></div>
+    <div class="rprt-grid">
+      <div><div class="sec-title">🏆 เมนูขายดี</div><div class="twrap" style="max-height:260px"><table><thead><tr><th>เมนู</th><th>จำนวน</th><th>รายได้</th></tr></thead><tbody id="top-tbody"></tbody></table></div></div>
+      <div>
+        <div class="sec-title">💳 ช่องทางชำระ</div><div id="pay-chart"></div>
+        <div class="sec-title" style="margin-top:16px">📅 ยอดรายวัน</div><div id="daily-chart"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: SETTINGS -->
+<div id="page-settings" class="page" style="flex-direction:column">
+  <div class="ipage" style="overflow-y:auto">
+    <div class="phdr"><div class="ptitle">⚙️ ตั้งค่าร้าน</div></div>
+    <div class="settings-form">
+      <div class="fg"><label>ชื่อร้าน</label><input type="text" id="s-name" placeholder="ชื่อร้าน"></div>
+      <div class="fg"><label>เบอร์โทร</label><input type="text" id="s-phone" placeholder="090-xxx-xxxx"></div>
+      <div class="fg"><label>PromptPay ID (เบอร์โทร/เลขบัตร)</label><input type="text" id="s-pp" placeholder="0901234567"></div>
+      <div class="fg"><label>จำนวนโต๊ะ</label><input type="number" id="s-tables" placeholder="10" min="1"></div>
+      <div class="fg"><label>ส่วนลดนักเรียน/ครู (%)</label><input type="number" id="s-studisc" placeholder="10" min="0"></div>
+      <div class="fg"><label>ราคาชุดครอบครัว (฿)</label><input type="number" id="s-famprice" placeholder="299" min="0"></div>
+      <button class="btn-p" onclick="saveSettings()" style="width:fit-content;padding:10px 24px">💾 บันทึก</button>
+      <hr>
+      <div style="color:var(--t2);font-size:12px">⚠️ กด Setup สำหรับตั้งค่าครั้งแรก</div>
+      <button class="btn-s" onclick="runSetup()" style="width:fit-content">🔧 Setup Google Sheets</button>
+      <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v2.0 Pro</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="spice-modal" class="modal-ov" style="display:none">
+  <div class="modal">
+    <h3 id="spice-title">เลือกระดับความเผ็ด</h3>
+    <div class="spice-btns">
+      <button class="spice-b" onclick="pickSpice('ไม่เผ็ด')">😊<br>ไม่เผ็ด</button>
+      <button class="spice-b" onclick="pickSpice('เผ็ดน้อย')">🌶️<br>น้อย</button>
+      <button class="spice-b active" onclick="pickSpice('กลาง')">🌶️🌶️<br>กลาง</button>
+      <button class="spice-b" onclick="pickSpice('แซ่บ')">🔥<br>แซ่บ</button>
+      <button class="spice-b" onclick="pickSpice('บ้านสวน')">💀<br>บ้านสวน</button>
+    </div>
+    <div id="spice-opts" style="margin-bottom:12px"></div>
+    <div class="fg"><label>โน้ตเพิ่มเติม</label><input type="text" id="item-note" placeholder="เช่น ไม่ใส่ผักชี"></div>
+    <div class="macts"><button class="btn-cancel" onclick="closeM('spice-modal')">ยกเลิก</button><button class="btn-save" onclick="confirmAdd()">เพิ่มลงรายการ</button></div>
+  </div>
+</div>
+
+<div id="prod-modal" class="modal-ov" style="display:none">
+  <div class="modal">
+    <h3 id="pm-title">เพิ่มสินค้า</h3>
+    <input type="hidden" id="pm-id">
+    <div class="fg"><label>ชื่อสินค้า *</label><input type="text" id="pm-name"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fg"><label>หมวดหมู่</label><input type="text" id="pm-cat" list="cat-dl"><datalist id="cat-dl"></datalist></div>
+      <div class="fg"><label>Emoji</label><input type="text" id="pm-emoji" placeholder="🍽️"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div class="fg"><label>ราคา (฿)*</label><input type="number" id="pm-price" min="0"></div>
+      <div class="fg"><label>ต้นทุน</label><input type="number" id="pm-cost" min="0"></div>
+      <div class="fg"><label>สต็อก</label><input type="number" id="pm-stock" min="0"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fg"><label>หน่วย</label><input type="text" id="pm-unit" placeholder="จาน"></div>
+      <div class="fg"><label>ลำดับ</label><input type="number" id="pm-sort" min="0"></div>
+    </div>
+    <div class="fg"><label>ตัวเลือกเสริม (ชื่อ:ราคา)</label><input type="text" id="pm-opts" placeholder="เพิ่มไข่มดแดง:20"></div>
+    <div class="macts"><button class="btn-cancel" onclick="closeM('prod-modal')">ยกเลิก</button><button class="btn-save" onclick="saveProd()">บันทึก</button></div>
+  </div>
+</div>
+
+<div id="receipt-modal" class="modal-ov" style="display:none">
+  <div class="modal" style="max-width:340px">
+    <h3>🧾 ใบเสร็จ</h3>
+    <div id="receipt-box"></div>
+    <div id="qr-area" style="text-align:center;margin-bottom:12px;display:none">
+      <p style="font-size:12px;color:var(--t2);margin-bottom:6px">สแกน PromptPay</p>
+      <img id="qr-img" style="width:180px;height:180px;border-radius:8px;background:#fff;padding:8px">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-cancel macts" style="flex:1;padding:9px;border-radius:8px;border:none;cursor:pointer;background:var(--c);color:var(--t2)" onclick="printReceipt()">🖨️ พิมพ์</button>
+      <button class="btn-save macts" style="flex:1;padding:9px;border-radius:8px;border:none;cursor:pointer;background:var(--p);color:#fff" onclick="closeM('receipt-modal')">✓ ปิด</button>
+    </div>
+  </div>
+</div>
+
+<div id="order-modal" class="modal-ov" style="display:none">
+  <div class="modal" style="max-width:440px">
+    <h3 id="om-title">รายละเอียด Order</h3>
+    <div id="om-body"></div>
+    <div class="macts"><button class="btn-cancel" onclick="closeM('order-modal')">ปิด</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>

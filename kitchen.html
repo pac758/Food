@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ครัว - ลาบบ้านสวน</title>
+<style>
+:root{--p:#FF6B35;--dk:#1A1A2E;--dk2:#16213E;--c:#1E2A45;--t:#EBEDF5;--t2:#9BABC8;--g:#2ECC71;--r:#E74C3C;--w:#F39C12;--b:rgba(255,255,255,.08);--rad:12px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sarabun',system-ui,sans-serif;background:var(--dk);color:var(--t);height:100vh;display:flex;flex-direction:column}
+.header{background:var(--dk2);padding:16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--b)}
+.k-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:16px;overflow-y:auto;flex:1}
+.k-card{background:var(--c);border-radius:var(--rad);padding:16px;border:1px solid var(--b);display:flex;flex-direction:column}
+.k-card.cooking{border-color:var(--w);box-shadow:0 0 0 1px var(--w)}
+.k-head{display:flex;justify-content:space-between;border-bottom:1px solid var(--b);padding-bottom:12px;margin-bottom:12px}
+.k-items{flex:1;font-size:15px;line-height:1.6}
+.k-item{display:flex;justify-content:space-between;padding:4px 0}
+.k-meta{font-size:12px;color:var(--t2)}
+.k-action{display:flex;gap:8px;margin-top:16px}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-family:inherit;font-weight:600;cursor:pointer;color:#fff}
+.btn.start{background:var(--w)}
+.btn.done{background:var(--g)}
+.btn.cancel{background:var(--dk2);border:1px solid var(--b)}
+.empty-msg{grid-column:1/-1;text-align:center;padding:40px;color:var(--t2);font-size:18px}
+</style>
+</head>
+<body>
+  <div class="header">
+    <div style="font-size:20px;font-weight:700;color:var(--p)">👨‍🍳 ระบบครัว (KDS)</div>
+    <div style="color:var(--t2)" id="last-update">กำลังโหลด...</div>
+  </div>
+  <div class="k-grid" id="k-grid"></div>
+
+<script>
+let orders = [];
+
+function loadOrders() {
+  document.getElementById('last-update').textContent = 'กำลังอัปเดต...';
+  google.script.run.withSuccessHandler(function(data) {
+    orders = data;
+    render();
+    var now = new Date();
+    document.getElementById('last-update').textContent = 'อัปเดตล่าสุด: ' + now.toLocaleTimeString('th-TH');
+  }).getKitchenOrders();
+}
+
+function render() {
+  var grid = document.getElementById('k-grid');
+  if (!orders.length) {
+    grid.innerHTML = '<div class="empty-msg">✅ ไม่มีออร์เดอร์ค้าง</div>';
+    return;
+  }
+  
+  grid.innerHTML = orders.map(function(o) {
+    var isCooking = o.status === 'cooking';
+    var itemsHtml = o.items.map(function(i) {
+      var meta = [];
+      if(i.spice) meta.push('🌶️ '+i.spice);
+      if(i.note) meta.push('📝 '+i.note);
+      return '<div class="k-item"><div><b>'+i.qty+'x</b> '+i.product_name+
+             (meta.length?'<div class="k-meta">'+meta.join(' | ')+'</div>':'')+
+             '</div></div>';
+    }).join('');
+    
+    var btnHtml = isCooking 
+      ? '<button class="btn done" onclick="updateStatus(\''+o.orderId+'\',\'served\')">✅ เสร็จแล้ว (เสิร์ฟ)</button>'
+      : '<button class="btn start" onclick="updateStatus(\''+o.orderId+'\',\'cooking\')">🔥 เริ่มทำ</button>';
+      
+    return '<div class="k-card '+(isCooking?'cooking':'')+'">'+
+      '<div class="k-head">'+
+        '<div><div style="font-size:18px;font-weight:700">โต๊ะ '+o.tableNo+'</div><div class="k-meta">'+o.orderId+'</div></div>'+
+        '<div style="text-align:right"><div style="color:var(--p);font-weight:600">'+o.time+'</div><div class="k-meta">'+(o.orderType==='dine-in'?'ทานที่ร้าน':'กลับบ้าน')+'</div></div>'+
+      '</div>'+
+      '<div class="k-items">'+itemsHtml+'</div>'+
+      '<div class="k-action">'+btnHtml+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function updateStatus(id, st) {
+  google.script.run.withSuccessHandler(function() {
+    loadOrders();
+  }).updateOrderStatus(id, st);
+}
+
+// Auto refresh every 10 seconds
+setInterval(loadOrders, 10000);
+window.onload = loadOrders;
+</script>
+</body>
+</html>
