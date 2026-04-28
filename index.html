@@ -823,7 +823,7 @@ function selectTable(no){
   toast('🪑 เลือกโต๊ะ '+no+' แล้ว','ok');
 }
 
-function updateTblStatus(oid,st){closeM('tbl-modal');google.script.run.withSuccessHandler(function(){toast('✅ อัปเดตสถานะแล้ว','ok');loadTables()}).updateOrderStatus(oid,st)}
+function updateTblStatus(oid,st){closeM('tbl-modal');toast('⏳ กำลังอัปเดต...','');google.script.run.withSuccessHandler(function(r){if(r&&r.success){toast('✅ อัปเดตสถานะแล้ว','ok')}else{toast('❌ ไม่สำเร็จ: '+(r&&r.message||'ไม่ทราบสาเหตุ'),'err')}loadTables()}).withFailureHandler(function(e){toast('❌ Error: '+(e&&e.message||'ไม่ทราบ'),'err')}).updateOrderStatus(oid,st)}
 
 // PRODUCT MANAGEMENT
 function renderProdTable(){

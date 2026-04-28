@@ -354,20 +354,22 @@ function saveOrder(orderData) {
 function updateOrderStatus(orderId, status) {
   const sh = getSheet_(SHEET_ORDERS);
   const data = sh.getDataRange().getValues();
+  const oid = String(orderId).trim();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === orderId) {
+    if (String(data[i][0]).trim() === oid) {
       sh.getRange(i+1, 13).setValue(status);
       return { success: true };
     }
   }
-  return { success: false };
+  return { success: false, message: 'ไม่พบ Order: ' + oid };
 }
 
 function cancelOrder(orderId, reason) {
   const sh = getSheet_(SHEET_ORDERS);
   const data = sh.getDataRange().getValues();
+  const oid = String(orderId).trim();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === orderId) {
+    if (String(data[i][0]).trim() === oid) {
       sh.getRange(i+1, 13).setValue('cancelled');
       const note = data[i][10] ? data[i][10] + ' | ยกเลิก: ' + reason : 'ยกเลิก: ' + reason;
       sh.getRange(i+1, 11).setValue(note);
