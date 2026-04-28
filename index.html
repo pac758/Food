@@ -1217,7 +1217,7 @@
           <button class="pay-b" onclick="selPay(this,'โอน')"><span>📱</span>โอน/QR</button>
           <button class="pay-b" onclick="selPay(this,'บัตร')"><span>💳</span>บัตร</button>
         </div>
-        <button id="checkout-btn" onclick="checkout()" disabled>ชำระเงิน</button>
+        <button id="checkout-btn" onclick="checkout()" disabled>📋 สั่งอาหาร</button>
       </div>
     </div>
   </div>
@@ -1389,7 +1389,21 @@
           <button style="background:#E67E22;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;margin-left:8px" onclick="google.script.run.withSuccessHandler(function(r){alert('ลบซ้ำ: '+r.removed+' รายการ\nเหลือ: '+r.remaining+' สินค้า');location.reload()}).deduplicateProducts()">🔄 ลบสินค้าซ้ำ</button>
           <div style="font-size:11px;color:var(--t2);margin-top:4px">ลบ orders ทดสอบของวันนี้ทั้งหมด + reset counter</div>
         </div>
-        <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v2.0 Pro</div>
+        <hr>
+        <div style="margin-top:12px;padding:12px;border:1px solid rgba(52,152,219,0.3);border-radius:8px;background:rgba(52,152,219,0.05)">
+          <div style="font-size:13px;font-weight:600;color:#3498DB;margin-bottom:8px">🖼️ จัดการรูปอาหาร</div>
+          <button style="background:#3498DB;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px" onclick="google.script.run.withSuccessHandler(function(r){alert('โฟลเดอร์พร้อม!\n\nเปิดลิงก์นี้เพื่ออัปโหลดรูป:\n'+r.folderUrl+'\n\nตั้งชื่อไฟล์ตาม product_id เช่น M001.png')}).setupFoodImageFolder()">📁 สร้างโฟลเดอร์</button>
+          <button style="background:#9B59B6;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;margin-left:8px" onclick="google.script.run.withSuccessHandler(function(r){if(r.success){alert('✅ จับคู่รูปสำเร็จ!\n\nจับคู่ได้: '+r.matched+' รูป'+(r.skipped.length?'\nไม่พบสินค้า: '+r.skipped.join(', '):''))}else{alert('❌ '+r.message)}}).syncFoodImages()">🔗 Sync รูปอาหาร</button>
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">อัปโหลดรูปตั้งชื่อ M001.png, M002.png ฯลฯ แล้วกด Sync</div>
+        </div>
+        <hr>
+        <div style="margin-top:12px;padding:12px;border:1px solid rgba(46,204,113,0.3);border-radius:8px;background:rgba(46,204,113,0.05)">
+          <div style="font-size:13px;font-weight:600;color:#2ECC71;margin-bottom:8px">📱 QR Code สั่งอาหาร</div>
+          <button style="background:#2ECC71;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px" onclick="showQRCodes()">🔗 สร้าง QR Code ทุกโต๊ะ</button>
+          <div id="qr-codes-area" style="margin-top:8px"></div>
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">สร้าง QR Code ให้ลูกค้าสแกนสั่งอาหาร</div>
+        </div>
+        <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v2.1 Pro</div>
       </div>
     </div>
   </div>
@@ -1495,7 +1509,7 @@
       document.querySelectorAll('.tab-btn').forEach(function (x) { x.classList.remove('active') });
       var el = document.getElementById('page-' + p); if (el) el.classList.add('active');
       var tb = document.querySelector('[data-p="' + p + '"]'); if (tb) tb.classList.add('active');
-      if (p === 'tables') loadTables();
+      if (p === 'tables') { loadTables(); startTablePoll(); } else { stopTablePoll(); }
       if (p === 'orders') loadOrders();
       if (p === 'report') { setToday(); loadReport() }
       if (p === 'products') renderProdTable();
@@ -1635,7 +1649,7 @@
       var grand = Math.max(0, sub - disc);
       document.getElementById('v-sub').textContent = '฿' + sub;
       document.getElementById('v-grand').textContent = '฿' + grand;
-      document.getElementById('checkout-btn').textContent = 'ชำระเงิน ฿' + grand;
+       document.getElementById('checkout-btn').textContent = '📋 สั่งอาหาร ฿' + grand;
     }
     function selPay(btn, m) { selPay_ = m; document.querySelectorAll('.pay-b').forEach(function (b) { b.classList.remove('active') }); btn.classList.add('active') }
     function applyStudentDisc() {
@@ -1647,23 +1661,28 @@
   </script>
 
   <script>
-    // CHECKOUT
+    // CHECKOUT (สั่งอาหาร - ยังไม่ชำระ)
     function checkout() {
       if (!cart.length) return;
+      var tbl = document.getElementById('table-sel').value;
+      if (!tbl || tbl === '-') { toast('❌ กรุณาเลือกโต๊ะก่อน', 'err'); return; }
       var sub = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
       var disc = Number(document.getElementById('disc-input').value) || 0;
       var grand = Math.max(0, sub - disc);
-      var btn = document.getElementById('checkout-btn'); btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+      var btn = document.getElementById('checkout-btn'); btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
       var od = {
         items: cart.map(function (i) { return { id: i.id, name: i.name, price: i.price, qty: i.qty, spice: i.spice || '', options: i.options || '', note: i.note || '' } }),
-        total: sub, discount: disc, discountType: disc > 0 ? 'manual' : '', grandTotal: grand, payment: selPay_,
-        tableNo: document.getElementById('table-sel').value, orderType: document.getElementById('order-type').value, cashier: staffName, customerCount: 1
+        total: sub, discount: disc, discountType: disc > 0 ? 'manual' : '', grandTotal: grand, payment: '',
+        tableNo: tbl, orderType: document.getElementById('order-type').value, cashier: staffName, customerCount: 1
       };
       google.script.run.withSuccessHandler(function (r) {
-        if (r.success) { showReceipt(r, od); clearCart(); document.getElementById('disc-input').value = ''; document.getElementById('table-sel').value = '-'; reloadProds() }
-        else toast('ผิดพลาด: ' + r.message, 'err');
-        btn.disabled = false; btn.textContent = 'ชำระเงิน';
-      }).withFailureHandler(function (e) { toast('ผิดพลาด', 'err'); btn.disabled = false; btn.textContent = 'ชำระเงิน' }).saveOrder(od);
+        if (r.success) {
+          toast('✅ ส่งออร์เดอร์โต๊ะ ' + tbl + ' สำเร็จ!', 'ok');
+          clearCart(); document.getElementById('disc-input').value = ''; document.getElementById('table-sel').value = '-'; reloadProds();
+          nav('tables');
+        } else toast('ผิดพลาด: ' + r.message, 'err');
+        btn.disabled = false; btn.textContent = '📋 สั่งอาหาร';
+      }).withFailureHandler(function (e) { toast('ผิดพลาด', 'err'); btn.disabled = false; btn.textContent = '📋 สั่งอาหาร' }).saveOrder(od);
     }
     function reloadProds() { google.script.run.withSuccessHandler(function (p) { products = p; renderProds() }).getProducts() }
 
@@ -1702,6 +1721,9 @@
 
     // ═══════════════ TABLES - Professional ═══════════════
     var _tblCache = [];
+    var _tblPollTimer = null;
+    function startTablePoll() { stopTablePoll(); _tblPollTimer = setInterval(loadTables, 15000); }
+    function stopTablePoll() { if (_tblPollTimer) { clearInterval(_tblPollTimer); _tblPollTimer = null; } }
     function loadTables() {
       google.script.run.withSuccessHandler(function (tbs) {
         if (!Array.isArray(tbs)) {
@@ -1737,7 +1759,13 @@
           else if (t.status === 'served') { cls = 'tbl-served'; icon = '✅'; label = 'เสิร์ฟแล้ว'; color = '#3498DB'; occ++ }
           else { cls = 'avail'; icon = '🪑'; label = 'ว่าง'; color = '#2ECC71'; avail++ }
           var time = t.time ? '<div class="tbl-time">' + t.time + '</div>' : '';
-          var items = t.itemCount ? '<div class="tbl-items">' + t.itemCount + ' รายการ</div>' : '';
+          var items = '';
+          if (t.totalItems) {
+            var sv = t.servedCount || 0;
+            var tt = t.totalItems;
+            var ic = sv === tt ? '#2ECC71' : '#F39C12';
+            items = '<div class="tbl-items" style="color:'+ic+'">✅ '+sv+'/'+tt+' เสิร์ฟ</div>';
+          }
           var amt = t.total ? '<div class="tbl-amt">฿' + t.total + '</div>' : '';
           if (cls === 'tbl-ordering') {
             items = '<div class="tbl-items">' + cart.length + ' รายการ</div>';
@@ -1836,12 +1864,12 @@
         body += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">สถานะ</span><span style="font-weight:600">' + (stMap2[t.status] || t.status) + '</span></div>';
         body += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">เวลาสั่ง</span><span>' + (t.time || '-') + '</span></div>';
         body += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ยอดรวม</span><span style="font-size:20px;font-weight:700;color:var(--p)">฿' + (t.total || 0) + '</span></div>';
-        body += '<div id="tbl-items-area" style="margin-top:8px;max-height:250px;overflow-y:auto;color:var(--t2);font-size:12px">กำลังโหลดรายการ...</div>';
+        body += '<div id="tbl-items-area" style="margin-top:8px;max-height:300px;overflow-y:auto;color:var(--t2);font-size:12px;padding-right:12px">กำลังโหลดรายการ...</div>';
         body += '</div>';
         acts = '';
         if (t.status === 'new') acts += '<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\'' + t.orderId + '\',\'cooking\',' + t.no + ')">🔥 เริ่มทำ</button>';
         if (t.status === 'cooking') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\'' + t.orderId + '\',\'served\',' + t.no + ')">✅ เสิร์ฟ</button>';
-        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="updateTblStatus(\'' + t.orderId + '\',\'completed\',' + t.no + ')">💰 เก็บเงิน/ว่าง</button>';
+        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="collectPayment(\'' + t.orderId + '\',' + t.no + ')">💰 เก็บเงิน</button>';
         acts += '<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
 
       }
@@ -1851,16 +1879,89 @@
       document.getElementById('tbl-modal').style.display = 'flex';
       // Load items on-demand for order tables
       if (t.orderId && ['new', 'cooking', 'served'].indexOf(t.status) !== -1) {
-        google.script.run.withSuccessHandler(function (d) {
-          var el = document.getElementById('tbl-items-area');
-          if (!el) return;
-          if (d && d.items && d.items.length) {
-            var h = '<div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:4px">📋 รายการอาหาร (' + d.items.length + ' รายการ):</div>';
-            d.items.forEach(function (i) { h += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.05)"><span>' + i.qty + 'x ' + i.product_name + '</span><span style="white-space:nowrap">฿' + i.subtotal + '</span></div>' });
-            el.innerHTML = h;
-          } else { el.textContent = 'ไม่พบรายการ'; }
-        }).getTableDetail(t.orderId);
+        window._currentOrderId = t.orderId;
+        window._currentTableNo = t.no;
+        loadItemsForModal(t.orderId);
       }
+    }
+
+    function loadItemsForModal(orderId) {
+      google.script.run.withSuccessHandler(function (d) {
+        var el = document.getElementById('tbl-items-area');
+        if (!el) return;
+        if (d && d.items && d.items.length) {
+          var served = d.items.filter(function(i){return i.item_status==='served'}).length;
+          var total = d.items.length;
+          var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+          h += '<span style="font-size:13px;font-weight:700;color:var(--t2)">📋 รายการ ('+total+')</span>';
+          h += '<span style="font-size:12px;color:'+(served===total?'#2ECC71':'#F39C12')+'">✅ เสิร์ฟแล้ว '+served+'/'+total+'</span>';
+          h += '</div>';
+          d.items.forEach(function (i) {
+            var isServed = i.item_status === 'served';
+            var badge = isServed
+              ? '<span style="color:#2ECC71;font-size:11px;font-weight:700">✅ เสิร์ฟแล้ว</span>'
+              : '<span style="color:#F39C12;font-size:11px;font-weight:700">🔥 กำลังทำ</span>';
+            var btn = isServed
+              ? '<button style="background:#555;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer" onclick="toggleItemStatus(\''+window._currentOrderId+'\','+i.row+',\'cooking\',this)">↩️ ยกเลิก</button>'
+              : '<button style="background:#2ECC71;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer" onclick="toggleItemStatus(\''+window._currentOrderId+'\','+i.row+',\'served\',this)">✅ เสิร์ฟ</button>';
+            var meta = [];
+            if(i.spice) meta.push('🌶️'+i.spice);
+            if(i.note) meta.push('📝'+i.note);
+            h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);'+(isServed?'opacity:0.6':'')+'">';
+            h += '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+i.qty+'x '+i.product_name+'</div>';
+            if(meta.length) h += '<div style="font-size:11px;color:var(--t2)">'+meta.join(' · ')+'</div>';
+            h += '</div>';
+            h += '<div style="text-align:right">'+badge+'<div style="margin-top:4px">'+btn+'</div></div>';
+            h += '</div>';
+          });
+          el.innerHTML = h;
+        } else { el.textContent = 'ไม่พบรายการ'; }
+      }).getTableDetail(orderId);
+    }
+
+    function toggleItemStatus(orderId, row, newStatus, btn) {
+      // Optimistic UI - update immediately
+      if (btn) { btn.disabled = true; btn.textContent = '⏳'; btn.style.opacity = '0.5'; }
+      // Find and update the item row in DOM instantly
+      var el = btn ? btn.closest('div[style*="display:flex"]') : null;
+      if (el && newStatus === 'served') el.style.opacity = '0.5';
+      google.script.run.withSuccessHandler(function(r) {
+        if (r && r.success) {
+          loadItemsForModal(orderId);
+          if (r.allServed) {
+            toast('✅ เสิร์ฟครบทุกรายการ!', 'ok');
+            setTimeout(function(){ loadTables(); }, 500);
+          }
+        }
+      }).updateItemStatus(orderId, row, newStatus);
+    }
+
+    function collectPayment(orderId, tableNo) {
+      closeM('tbl-modal');
+      google.script.run.withSuccessHandler(function(d) {
+        if (!d) { toast('❌ ไม่พบข้อมูล order', 'err'); return; }
+        var od = {
+          items: d.items || [],
+          total: d.total || 0,
+          discount: d.discount || 0,
+          grandTotal: d.grandTotal || d.total || 0,
+          payment: 'เงินสด',
+          tableNo: d.tableNo || tableNo,
+          orderType: d.orderType || 'dine-in'
+        };
+        var r = {
+          orderId: orderId,
+          shopName: settings.shop_name || 'ลาบบ้านสวน',
+          shopPhone: settings.shop_phone || '',
+          date: d.date || '',
+          time: d.time || ''
+        };
+        showReceipt(r, od);
+        // Mark as completed after showing receipt
+        google.script.run.withSuccessHandler(function() {
+          loadTables();
+        }).updateOrderStatus(orderId, 'completed', String(tableNo));
+      }).getOrderDetail(orderId);
     }
 
     function selectTable(no) {
@@ -2030,6 +2131,39 @@
       }).saveMultipleSettings(pairs);
     }
     function runSetup() { google.script.run.withSuccessHandler(function () { toast('✅ Setup สำเร็จ! รีโหลด...', 'ok'); setTimeout(function () { location.reload() }, 1500) }).setupSheets() }
+
+    function showQRCodes() {
+      var el = document.getElementById('qr-codes-area');
+      var count = Number(settings.table_count) || 10;
+      var baseUrl = 'https://script.google.com/a/macros/rkt.ac.th/s/AKfycbylSVdjz3xTU3AL306TtCgqqx_T9xJ9_CdY69xM6w-hNu9h15w-DuYI5u6h1WdiB_VC/exec';
+      var h = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px">';
+      for (var i = 1; i <= count; i++) {
+        var menuUrl = baseUrl + '?page=menu&table=' + i;
+        var qrApi = 'https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=' + encodeURIComponent(menuUrl);
+        h += '<div style="text-align:center;background:var(--s);border-radius:8px;padding:12px;border:1px solid var(--b)">';
+        h += '<img src="' + qrApi + '" style="width:120px;height:120px;border-radius:4px;background:#fff;padding:4px">';
+        h += '<div style="font-weight:700;margin-top:6px;font-size:14px">โต๊ะ ' + i + '</div>';
+        h += '<button onclick="printSingleQR(' + i + ')" style="margin-top:4px;background:var(--p);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">🖨️ พิมพ์</button>';
+        h += '</div>';
+      }
+      h += '</div>';
+      el.innerHTML = h;
+    }
+
+    function printSingleQR(tableNo) {
+      var baseUrl = 'https://script.google.com/a/macros/rkt.ac.th/s/AKfycbylSVdjz3xTU3AL306TtCgqqx_T9xJ9_CdY69xM6w-hNu9h15w-DuYI5u6h1WdiB_VC/exec';
+      var menuUrl = baseUrl + '?page=menu&table=' + tableNo;
+      var qrApi = 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=' + encodeURIComponent(menuUrl);
+      var w = window.open('', '', 'width=400,height=500');
+      w.document.write('<div style="text-align:center;padding:20px;font-family:sans-serif">');
+      w.document.write('<h2>🍽️ ลาบบ้านสวน</h2>');
+      w.document.write('<img src="' + qrApi + '" style="width:250px;height:250px">');
+      w.document.write('<h1 style="margin-top:10px">โต๊ะ ' + tableNo + '</h1>');
+      w.document.write('<p style="color:#888;font-size:14px">สแกนเพื่อสั่งอาหาร 📱</p>');
+      w.document.write('</div>');
+      w.document.close();
+      setTimeout(function(){ w.print(); }, 500);
+    }
 
     // UTILS
     function closeM(id) { document.getElementById(id).style.display = 'none' }

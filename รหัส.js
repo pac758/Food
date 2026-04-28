@@ -23,6 +23,15 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   
+  if (page === 'menu') {
+    var tmpl = HtmlService.createTemplateFromFile('menu');
+    tmpl.tableNo = (e && e.parameter && e.parameter.table) || '-';
+    return tmpl.evaluate()
+      .setTitle('เมนู — ลาบบ้านสวน')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
     .setTitle('POS — ลาบบ้านสวน')
@@ -127,15 +136,22 @@ function setupSheets() {
                  'payment','note','cashier','status','customer_count']);
     headerStyle(o, 14);
   }
+  // Always fix header row to correct format
+  const correctHeaders = ['order_id','date','time','table_no','order_type',
+    'total','discount','discount_type','grand_total',
+    'payment','note','cashier','status','customer_count'];
+  o.getRange(1, 1, 1, 14).setValues([correctHeaders]);
 
   // ─── OrderItems ───
   let i = ss.getSheetByName(SHEET_ITEMS);
   if (!i) i = ss.insertSheet(SHEET_ITEMS);
   if (!i.getRange('A1').getValue()) {
     i.appendRow(['order_id','product_id','product_name','qty',
-                 'unit_price','subtotal','spice_level','options','note']);
-    headerStyle(i, 9);
+                 'unit_price','subtotal','spice_level','options','note','item_status']);
+    headerStyle(i, 10);
   }
+  // Auto-fix OrderItems header
+  i.getRange(1,1,1,10).setValues([['order_id','product_id','product_name','qty','unit_price','subtotal','spice_level','options','note','item_status']]);
 
   // ─── Settings ───
   let s = ss.getSheetByName(SHEET_SETTINGS);
@@ -234,9 +250,22 @@ function getProducts() {
       unit: r[5] || 'จาน', active: r[6],
       emoji: r[7] || '🍽️', spice_default: r[8] || '',
       options: r[9] || '', cost: Number(r[10]) || 0,
-      sort_order: Number(r[11]) || 99
+      sort_order: Number(r[11]) || 99,
+      image_url: r[12] || ''
     }))
     .sort((a,b) => a.sort_order - b.sort_order);
+}
+
+// Customer menu - no cost/stock info
+function getMenuForCustomer() {
+  const prods = getProducts().map(p => ({
+    id: p.id, name: p.name, category: p.category,
+    price: p.price, unit: p.unit, emoji: p.emoji,
+    spice_default: p.spice_default, options: p.options,
+    image_url: p.image_url || ''
+  }));
+  const sett = getSettings();
+  return { products: prods, shopName: sett.shop_name || 'ลาบบ้านสวน' };
 }
 
 function getCategories() {
@@ -340,7 +369,7 @@ function saveOrder(orderData) {
       iSh.appendRow([
         orderId, item.id, item.name, item.qty,
         item.price, item.qty * item.price,
-        item.spice || '', item.options || '', item.note || ''
+        item.spice || '', item.options || '', item.note || '', 'cooking'
       ]);
       updateStock(item.id, -item.qty);
     });
@@ -365,7 +394,7 @@ function updateOrderStatus(orderId, status, tableNo) {
   // Reverse: find LATEST matching row
   for (let i = data.length - 1; i >= 1; i--) {
     var matchId = String(data[i][0]).trim() === oid;
-    var matchTbl = !tbl || String(data[i][3]).trim() === tbl;
+    var matchTbl = !tbl || String(data[i][3]).trim().replace(/['"]/g,'') === tbl;
     if (matchId && matchTbl) {
       var oldStatus = String(data[i][12]);
       sh.getRange(i+1, 13).setValue(status);
@@ -399,12 +428,41 @@ function getOrderItems_(orderId) {
   const data = sh.getDataRange().getValues();
   if (data.length <= 1) return [];
   return data.slice(1)
-    .filter(r => r[0] === orderId)
-    .map(r => ({
-      product_id: r[1], product_name: r[2], qty: Number(r[3]),
-      unit_price: Number(r[4]), subtotal: Number(r[5]),
-      spice: r[6], options: r[7], note: r[8]
+    .map((r, idx) => ({ r, rowIdx: idx + 2 }))
+    .filter(x => x.r[0] === orderId)
+    .map(x => ({
+      product_id: x.r[1], product_name: x.r[2], qty: Number(x.r[3]),
+      unit_price: Number(x.r[4]), subtotal: Number(x.r[5]),
+      spice: x.r[6], options: x.r[7], note: x.r[8],
+      item_status: x.r[9] || 'cooking',
+      row: x.rowIdx
     }));
+}
+
+// Update single item status
+function updateItemStatus(orderId, itemRow, newStatus) {
+  const iSh = getSheet_(SHEET_ITEMS);
+  iSh.getRange(itemRow, 10).setValue(newStatus);
+  
+  // Check if ALL items of this order are served
+  const data = iSh.getDataRange().getValues();
+  const orderItems = data.slice(1).filter(r => String(r[0]) === String(orderId));
+  const allServed = orderItems.length > 0 && orderItems.every(r => String(r[9]) === 'served');
+  
+  // Auto-update order status
+  if (allServed) {
+    const oSh = getSheet_(SHEET_ORDERS);
+    const oData = oSh.getDataRange().getValues();
+    for (let i = oData.length - 1; i >= 1; i--) {
+      if (String(oData[i][0]).trim() === String(orderId).trim()) {
+        oSh.getRange(i+1, 13).setValue('served');
+        break;
+      }
+    }
+  }
+  
+  SpreadsheetApp.flush();
+  return { success: true, allServed: allServed };
 }
 
 // ── Kitchen Display ──────────────────────────────────────────
@@ -529,6 +587,14 @@ function getReservations(dateStr) {
     }));
 }
 
+function getItemCounts_(orderId) {
+  const sh = getSheet_(SHEET_ITEMS);
+  const data = sh.getDataRange().getValues();
+  const items = data.slice(1).filter(r => String(r[0]) === orderId);
+  const served = items.filter(r => String(r[9]) === 'served').length;
+  return { total: items.length, served: served };
+}
+
 function getTableStatus() {
   try {
     const settings = getSettings();
@@ -545,7 +611,7 @@ function getTableStatus() {
         if (rowDate instanceof Date) {
           rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
         }
-        return String(rowDate) === today && String(r[3]).trim() === tableStr && ['new','cooking','served'].includes(String(r[12]));
+        return String(rowDate) === today && String(r[3]).trim().replace(/['"]/g,'') === tableStr && ['new','cooking','served'].includes(String(r[12]));
       });
       // Priority: cooking/served orders first (active), then new
       const activeOrder = todayOrders.filter(r => ['cooking','served'].includes(String(r[12]))).pop()
@@ -559,14 +625,18 @@ function getTableStatus() {
         } else {
           orderTime = String(orderTime || '');
         }
+        var oid = String(activeOrder[0]);
+        var itemInfo = getItemCounts_(oid);
         tables.push({
           no: t,
           status: String(activeOrder[12]),
-          orderId: String(activeOrder[0]),
+          orderId: oid,
           orderType: String(activeOrder[4]),
           total: Number(activeOrder[8]) || 0,
           time: orderTime,
-          itemCount: countOrderItems_(String(activeOrder[0]))
+          itemCount: itemInfo.total,
+          servedCount: itemInfo.served,
+          totalItems: itemInfo.total
         });
         continue;
       }
@@ -707,6 +777,11 @@ function getAllData() {
    try { prods = getProducts(); debug.push('retry prods=' + prods.length); } catch(e) { debug.push('retry err=' + e); }
   }
   try { sett = getSettings(); } catch(e) { debug.push('sett err=' + e); }
+  // Auto-fix Orders header
+  try {
+    var oSh = getSS_().getSheetByName(SHEET_ORDERS);
+    if (oSh) oSh.getRange(1,1,1,14).setValues([['order_id','date','time','table_no','order_type','total','discount','discount_type','grand_total','payment','note','cashier','status','customer_count']]);
+  } catch(e) {}
   return { products: prods, settings: sett, tables: [], todayReport: {}, debug: debug.join(' | ') };
 }
 
@@ -806,4 +881,129 @@ function deduplicateProducts() {
   
   SpreadsheetApp.flush();
   return { removed: rowsToDelete.length, remaining: Object.keys(seen).length };
+}
+
+// ── Food Image Management (Google Drive) ─────────────────────
+function setupFoodImageFolder() {
+  var folders = DriveApp.getFoldersByName('POS_FoodImages');
+  var folder;
+  if (folders.hasNext()) {
+    folder = folders.next();
+  } else {
+    folder = DriveApp.createFolder('POS_FoodImages');
+  }
+  return { folderId: folder.getId(), folderUrl: folder.getUrl() };
+}
+
+function saveFoodImage(productId, base64Data) {
+  var folders = DriveApp.getFoldersByName('POS_FoodImages');
+  var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('POS_FoodImages');
+  var existing = folder.getFilesByName(productId + '.png');
+  while (existing.hasNext()) existing.next().setTrashed(true);
+  var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', productId + '.png');
+  var file = folder.createFile(blob);
+  // Try to share publicly, skip if blocked by domain
+  try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(e) {}
+  var url = 'https://drive.google.com/uc?id=' + file.getId();
+  updateProductImageUrl_(productId, url);
+  return { success: true, url: url, fileId: file.getId() };
+}
+
+function updateProductImageUrl_(productId, url) {
+  var sh = getSheet_(SHEET_PRODUCTS);
+  var data = sh.getDataRange().getValues();
+  var headers = data[0];
+  var imgCol = headers.indexOf('image_url');
+  if (imgCol === -1) {
+    imgCol = headers.length;
+    sh.getRange(1, imgCol + 1).setValue('image_url');
+  }
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === String(productId).trim()) {
+      sh.getRange(i + 1, imgCol + 1).setValue(url);
+      break;
+    }
+  }
+}
+
+function getAllFoodImageUrls() {
+  var sh = getSheet_(SHEET_PRODUCTS);
+  var data = sh.getDataRange().getValues();
+  var headers = data[0];
+  var imgCol = headers.indexOf('image_url');
+  if (imgCol === -1) return {};
+  var map = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][imgCol]) map[String(data[i][0])] = String(data[i][imgCol]);
+  }
+  return map;
+}
+
+// Scan Drive folder and match files to products
+function syncFoodImages() {
+  try {
+    var folders = DriveApp.getFoldersByName('POS_FoodImages');
+    if (!folders.hasNext()) return { success: false, message: 'ไม่พบโฟลเดอร์ POS_FoodImages' };
+    var folder = folders.next();
+    
+    // Collect files first
+    var fileList = [];
+    var files = folder.getFiles();
+    while (files.hasNext()) {
+      var f = files.next();
+      fileList.push({ name: f.getName(), id: f.getId() });
+    }
+    
+    var sh = getSheet_(SHEET_PRODUCTS);
+    var data = sh.getDataRange().getValues();
+    var headers = data[0];
+    var imgCol = headers.indexOf('image_url');
+    if (imgCol === -1) {
+      imgCol = headers.length;
+      sh.getRange(1, imgCol + 1).setValue('image_url');
+    }
+    
+    var prodMap = {};
+    for (var i = 1; i < data.length; i++) {
+      prodMap[String(data[i][0]).trim().toUpperCase()] = i + 1;
+    }
+    
+    var matched = 0;
+    var skipped = [];
+    for (var j = 0; j < fileList.length; j++) {
+      var fname = fileList[j].name.replace(/\.\w+$/, '').trim().toUpperCase();
+      if (prodMap[fname]) {
+        sh.getRange(prodMap[fname], imgCol + 1).setValue('drive:' + fileList[j].id);
+        matched++;
+      } else {
+        skipped.push(fileList[j].name);
+      }
+    }
+    SpreadsheetApp.flush();
+    return { success: true, matched: matched, skipped: skipped, total: fileList.length };
+  } catch(e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// Serve image as base64 (called from menu page)
+function getImageData(fileId) {
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var blob = file.getBlob();
+    var bytes = blob.getBytes();
+    var type = blob.getContentType();
+    // Convert PNG to JPEG for smaller size
+    if (type === 'image/png' && bytes.length > 200000) {
+      try {
+        blob = blob.getAs('image/jpeg');
+        bytes = blob.getBytes();
+        type = 'image/jpeg';
+      } catch(ce) {}
+    }
+    if (bytes.length > 2000000) return ''; // Skip if > 2MB
+    return 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
+  } catch(e) {
+    return '';
+  }
 }

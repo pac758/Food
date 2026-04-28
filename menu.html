@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>เมนู — ลาบบ้านสวน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--p:#FF6B35;--p2:#FF8C5A;--dk:#0F0F1A;--dk2:#161628;--card:#1C1C32;--t:#F0F0FF;--t2:#8B8BA8;--g:#2ECC71;--r:#E74C3C;--w:#F39C12;--b:rgba(255,255,255,.06);--rad:16px;--shadow:0 4px 20px rgba(0,0,0,.4)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Sarabun',system-ui,sans-serif;background:var(--dk);color:var(--t);min-height:100vh;overflow-x:hidden;padding-bottom:80px}
+/* Header */
+.m-header{background:linear-gradient(135deg,var(--dk2),#1a1a3a);padding:20px 16px 16px;text-align:center;border-bottom:1px solid var(--b);position:relative;overflow:hidden}
+.m-header::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(255,107,53,.08) 0%,transparent 60%);pointer-events:none}
+.m-logo{font-size:28px;font-weight:800;color:var(--p);text-shadow:0 2px 10px rgba(255,107,53,.3)}
+.m-sub{font-size:13px;color:var(--t2);margin-top:2px}
+.m-table{display:inline-block;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;margin-top:8px}
+/* Category tabs */
+.cat-bar{position:sticky;top:0;z-index:50;background:var(--dk);border-bottom:1px solid var(--b);padding:0 8px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cat-bar::-webkit-scrollbar{display:none}
+.cat-tab{display:inline-block;padding:12px 16px;font-size:14px;font-weight:600;color:var(--t2);cursor:pointer;border-bottom:3px solid transparent;transition:.2s}
+.cat-tab.active{color:var(--p);border-color:var(--p)}
+/* Product grid */
+.prod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:16px}
+.prod-card{background:var(--card);border-radius:var(--rad);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;border:1px solid var(--b);position:relative}
+.prod-card:active{transform:scale(.96)}
+.prod-emoji{font-size:52px;text-align:center;padding:24px 0 8px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3))}
+.prod-img{width:100%;height:120px;background-size:cover;background-position:center;border-radius:var(--rad) var(--rad) 0 0}
+.prod-info{padding:0 12px 14px;text-align:center}
+.prod-name{font-size:15px;font-weight:700;line-height:1.3;min-height:40px;display:flex;align-items:center;justify-content:center}
+.prod-price{font-size:20px;font-weight:800;color:var(--p);margin-top:4px}
+.prod-unit{font-size:12px;color:var(--t2)}
+.prod-add{position:absolute;bottom:10px;right:10px;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;font-size:24px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(255,107,53,.4);transition:transform .15s}
+.prod-add:active{transform:scale(1.15)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.prod-card{animation:fadeIn .3s ease forwards}
+/* Cart bottom bar */
+.cart-bar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,var(--p),#e05a20);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:100;cursor:pointer;box-shadow:0 -4px 20px rgba(0,0,0,.5);transition:transform .3s}
+.cart-bar.hidden{transform:translateY(100%)}
+.cart-info{color:#fff;font-weight:700;font-size:15px}
+.cart-count{background:rgba(255,255,255,.25);padding:2px 10px;border-radius:12px;font-size:13px;margin-left:8px}
+.cart-total{color:#fff;font-size:20px;font-weight:800}
+/* Cart sheet (overlay) */
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+.cart-overlay.show{opacity:1;pointer-events:auto}
+.cart-sheet{position:fixed;bottom:0;left:0;right:0;max-height:85vh;background:var(--dk2);border-radius:20px 20px 0 0;z-index:201;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow:hidden;display:flex;flex-direction:column}
+.cart-sheet.show{transform:translateY(0)}
+.cart-handle{width:40px;height:4px;background:var(--t2);border-radius:4px;margin:10px auto}
+.cart-head{padding:4px 20px 16px;border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center}
+.cart-items{flex:1;overflow-y:auto;padding:12px 20px}
+.cart-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--b)}
+.cart-item-info{flex:1}
+.cart-item-name{font-weight:600;font-size:14px}
+.cart-item-meta{font-size:12px;color:var(--t2)}
+.cart-item-price{font-weight:700;color:var(--p);font-size:15px;white-space:nowrap}
+.qty-ctrl{display:flex;align-items:center;gap:8px}
+.qty-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--b);background:var(--card);color:var(--t);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.qty-val{font-size:16px;font-weight:700;min-width:20px;text-align:center}
+.cart-footer{padding:16px 20px;border-top:1px solid var(--b);background:var(--dk2)}
+.cart-total-row{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-bottom:12px}
+.cart-submit{width:100%;padding:16px;background:linear-gradient(135deg,var(--p),#e05a20);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:17px;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
+.cart-submit:active{opacity:.9}
+/* Spice modal */
+.spice-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:none;align-items:flex-end;justify-content:center}
+.spice-ov.show{display:flex}
+.spice-box{background:var(--dk2);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px;animation:slideUp .3s}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.spice-title{font-size:18px;font-weight:700;text-align:center;margin-bottom:16px}
+.spice-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+.sp-btn{padding:12px 4px;border-radius:12px;border:2px solid var(--b);background:var(--card);color:var(--t);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:.2s}
+.sp-btn.active{border-color:var(--p);background:rgba(255,107,53,.15);color:var(--p)}
+.spice-note{width:100%;padding:12px;border-radius:10px;border:1px solid var(--b);background:var(--card);color:var(--t);font-family:inherit;font-size:14px;margin-bottom:16px}
+.spice-acts{display:flex;gap:10px}
+.spice-acts button{flex:1;padding:14px;border:none;border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.sp-cancel{background:var(--card);color:var(--t);border:1px solid var(--b)!important}
+.sp-confirm{background:linear-gradient(135deg,var(--p),#e05a20);color:#fff}
+/* Success page */
+.success-page{position:fixed;inset:0;background:var(--dk);z-index:400;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+.success-page.show{display:flex}
+.success-icon{font-size:80px;margin-bottom:16px;animation:bounce 1s ease infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.success-msg{font-size:24px;font-weight:800;margin-bottom:8px}
+.success-sub{color:var(--t2);font-size:15px;margin-bottom:24px}
+.success-oid{background:var(--card);padding:12px 24px;border-radius:12px;font-size:14px;color:var(--t2);margin-bottom:24px}
+.btn-again{padding:14px 32px;background:linear-gradient(135deg,var(--p),#e05a20);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer}
+/* Toast */
+.m-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--card);color:var(--t);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:500;box-shadow:var(--shadow);transition:transform .3s;border:1px solid var(--b)}
+.m-toast.show{transform:translateX(-50%) translateY(0)}
+/* Cat section title */
+.cat-title{padding:16px 16px 4px;font-size:16px;font-weight:700;color:var(--t2)}
+/* Empty */
+.empty{text-align:center;padding:60px 20px;color:var(--t2)}
+</style>
+</head>
+<body>
+
+<div class="m-header">
+  <div class="m-logo">🍽️ ลาบบ้านสวน</div>
+  <div class="m-sub">อาหารอีสานแท้ รสจัดจ้าน</div>
+  <div class="m-table" id="m-table-badge">โต๊ะ -</div>
+</div>
+
+<div class="cat-bar" id="cat-bar"></div>
+
+<div id="menu-area"><div class="empty">กำลังโหลดเมนู...</div></div>
+
+<!-- Cart bottom bar -->
+<div class="cart-bar hidden" id="cart-bar" onclick="openCart()">
+  <div class="cart-info">🛒 ตะกร้า <span class="cart-count" id="cart-count-badge">0</span></div>
+  <div class="cart-total" id="cart-total-badge">฿0</div>
+</div>
+
+<!-- Cart sheet overlay -->
+<div class="cart-overlay" id="cart-ov" onclick="closeCart()"></div>
+<div class="cart-sheet" id="cart-sheet">
+  <div class="cart-handle"></div>
+  <div class="cart-head">
+    <div style="font-size:18px;font-weight:700">🛒 รายการสั่ง</div>
+    <div style="color:var(--t2);cursor:pointer;font-size:14px" onclick="closeCart()">✕ ปิด</div>
+  </div>
+  <div class="cart-items" id="cart-items-area"></div>
+  <div class="cart-footer">
+    <div class="cart-total-row"><span>รวมทั้งหมด</span><span id="cart-grand-total" style="color:var(--p)">฿0</span></div>
+    <button class="cart-submit" id="btn-submit" onclick="submitOrder()">✅ ยืนยันสั่งอาหาร</button>
+  </div>
+</div>
+
+<!-- Spice modal -->
+<div class="spice-ov" id="spice-ov">
+  <div class="spice-box">
+    <div class="spice-title" id="spice-item-name">เลือกความเผ็ด</div>
+    <div class="spice-grid">
+      <div class="sp-btn" onclick="pickSp(this,'ไม่เผ็ด')">😊<br>ไม่เผ็ด</div>
+      <div class="sp-btn" onclick="pickSp(this,'เผ็ดน้อย')">🌶️<br>น้อย</div>
+      <div class="sp-btn active" onclick="pickSp(this,'กลาง')">🌶️🌶️<br>กลาง</div>
+      <div class="sp-btn" onclick="pickSp(this,'แซ่บ')">🔥<br>แซ่บ</div>
+      <div class="sp-btn" onclick="pickSp(this,'บ้านสวน')">💀<br>บ้านสวน</div>
+    </div>
+    <input class="spice-note" id="sp-note" placeholder="โน้ตเพิ่มเติม เช่น ไม่ใส่ผักชี">
+    <div class="spice-acts">
+      <button class="sp-cancel" onclick="cancelSpice()">ยกเลิก</button>
+      <button class="sp-confirm" onclick="confirmSpice()">เพิ่มลงตะกร้า</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success page -->
+<div class="success-page" id="success-page">
+  <div class="success-icon">✅</div>
+  <div class="success-msg">สั่งเรียบร้อย!</div>
+  <div class="success-sub">กำลังเตรียมอาหาร กรุณารอสักครู่</div>
+  <div class="success-oid" id="success-oid"></div>
+  <button class="btn-again" onclick="orderAgain()">🍽️ สั่งเพิ่ม</button>
+</div>
+
+<!-- Toast -->
+<div class="m-toast" id="m-toast"></div>
+
+<script>
+var tableNo = '<?= tableNo ?>';
+var products = [];
+var categories = [];
+var cart = [];
+var pendingItem = null;
+var selectedSpice = 'กลาง';
+
+document.getElementById('m-table-badge').textContent = 'โต๊ะ ' + tableNo;
+
+// Load menu
+function loadMenu() {
+  google.script.run.withSuccessHandler(function(data) {
+    products = data.products || [];
+    // DEBUG: check image_url
+    var withImg = products.filter(function(p){return p.image_url});
+    console.warn('IMG_DEBUG Products with image_url:', withImg.length, JSON.stringify(withImg.map(function(p){return p.id+':'+p.image_url.substring(0,40)})));
+    categories = [];
+    var catSet = {};
+    products.forEach(function(p) {
+      if (!catSet[p.category]) { catSet[p.category] = true; categories.push(p.category); }
+    });
+    renderCats();
+    renderMenu();
+  }).withFailureHandler(function(e) {
+    document.getElementById('menu-area').innerHTML = '<div class="empty">❌ โหลดเมนูไม่สำเร็จ<br>'+e.message+'</div>';
+  }).getMenuForCustomer();
+}
+
+function renderCats() {
+  var bar = document.getElementById('cat-bar');
+  var h = '<div class="cat-tab active" onclick="filterCat(this,\'all\')">ทั้งหมด</div>';
+  categories.forEach(function(c) {
+    h += '<div class="cat-tab" onclick="filterCat(this,\''+c+'\')">'+c+'</div>';
+  });
+  bar.innerHTML = h;
+}
+
+var currentCat = 'all';
+function filterCat(el, cat) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+  renderMenu();
+}
+
+function renderMenu() {
+  var items = currentCat === 'all' ? products : products.filter(function(p){return p.category === currentCat});
+  if (!items.length) {
+    document.getElementById('menu-area').innerHTML = '<div class="empty">ไม่มีรายการในหมวดนี้</div>';
+    return;
+  }
+  var h = '<div class="prod-grid">';
+  items.forEach(function(p, i) {
+    var hasImg = p.image_url && p.image_url.indexOf('drive:') === 0;
+    var visual = '<div class="prod-emoji" id="img-'+p.id+'">'+(p.emoji||'🍽️')+'</div>';
+    h += '<div class="prod-card" onclick="addItem('+i+')">' +
+      visual +
+      '<div class="prod-info">' +
+        '<div class="prod-name">'+p.name+'</div>' +
+        '<div class="prod-price">฿'+p.price+'</div>' +
+        '<div class="prod-unit">/ '+p.unit+'</div>' +
+      '</div>' +
+      '<div class="prod-add">+</div>' +
+    '</div>';
+  });
+  h += '</div>';
+  document.getElementById('menu-area').innerHTML = h;
+  // Lazy load images from Drive
+  items.forEach(function(p) {
+    if (p.image_url && p.image_url.indexOf('drive:') === 0) {
+      var fileId = p.image_url.replace('drive:', '');
+      google.script.run
+        .withSuccessHandler(function(dataUri) {
+          if (dataUri && dataUri.indexOf('data:') === 0) {
+            var el = document.getElementById('img-' + p.id);
+            if (el) {
+              el.outerHTML = '<div class="prod-img" style="background-image:url(' + dataUri + ')"></div>';
+            }
+          }
+        })
+        .withFailureHandler(function(e) {
+          console.log('Image error for ' + p.id + ': ' + e.message);
+        })
+        .getImageData(fileId);
+    }
+  });
+}
+
+// Add item
+function addItem(idx) {
+  var items = currentCat === 'all' ? products : products.filter(function(p){return p.category === currentCat});
+  var p = items[idx];
+  if (!p) return;
+  pendingItem = { id: p.id, name: p.name, price: p.price, qty: 1, spice: '', note: '', unit: p.unit };
+  if (p.spice_default) {
+    selectedSpice = p.spice_default || 'กลาง';
+    document.getElementById('spice-item-name').textContent = p.emoji + ' ' + p.name;
+    document.querySelectorAll('.sp-btn').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.sp-btn').forEach(function(b){ if(b.textContent.includes(selectedSpice)) b.classList.add('active') });
+    document.getElementById('sp-note').value = '';
+    document.getElementById('spice-ov').classList.add('show');
+  } else {
+    cart.push(pendingItem);
+    pendingItem = null;
+    showToast('✅ เพิ่ม '+p.name+' แล้ว');
+    updateCartUI();
+  }
+}
+
+function pickSp(el, level) {
+  selectedSpice = level;
+  document.querySelectorAll('.sp-btn').forEach(function(b){b.classList.remove('active')});
+  el.classList.add('active');
+}
+
+function cancelSpice() {
+  pendingItem = null;
+  document.getElementById('spice-ov').classList.remove('show');
+}
+
+function confirmSpice() {
+  if (!pendingItem) return;
+  pendingItem.spice = selectedSpice;
+  pendingItem.note = document.getElementById('sp-note').value.trim();
+  cart.push(pendingItem);
+  showToast('✅ เพิ่ม '+pendingItem.name+' แล้ว');
+  pendingItem = null;
+  document.getElementById('spice-ov').classList.remove('show');
+  updateCartUI();
+}
+
+// Cart UI
+function updateCartUI() {
+  var count = cart.reduce(function(s,i){return s+i.qty},0);
+  var total = cart.reduce(function(s,i){return s+i.qty*i.price},0);
+  var bar = document.getElementById('cart-bar');
+  if (count > 0) { bar.classList.remove('hidden'); } else { bar.classList.add('hidden'); }
+  document.getElementById('cart-count-badge').textContent = count;
+  document.getElementById('cart-total-badge').textContent = '฿'+total;
+  document.getElementById('cart-grand-total').textContent = '฿'+total;
+  renderCartItems();
+}
+
+function renderCartItems() {
+  var area = document.getElementById('cart-items-area');
+  if (!cart.length) { area.innerHTML = '<div class="empty" style="padding:30px">ตะกร้าว่าง</div>'; return; }
+  area.innerHTML = cart.map(function(c, i) {
+    var meta = [];
+    if (c.spice) meta.push('🌶️ '+c.spice);
+    if (c.note) meta.push('📝 '+c.note);
+    return '<div class="cart-item">' +
+      '<div class="cart-item-info">' +
+        '<div class="cart-item-name">'+c.name+'</div>' +
+        (meta.length ? '<div class="cart-item-meta">'+meta.join(' · ')+'</div>' : '') +
+      '</div>' +
+      '<div class="qty-ctrl">' +
+        '<button class="qty-btn" onclick="changeQty('+i+',-1)">−</button>' +
+        '<div class="qty-val">'+c.qty+'</div>' +
+        '<button class="qty-btn" onclick="changeQty('+i+',1)">+</button>' +
+      '</div>' +
+      '<div class="cart-item-price">฿'+(c.qty*c.price)+'</div>' +
+    '</div>';
+  }).join('');
+}
+
+function changeQty(idx, delta) {
+  cart[idx].qty += delta;
+  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  updateCartUI();
+}
+
+function openCart() {
+  document.getElementById('cart-ov').classList.add('show');
+  document.getElementById('cart-sheet').classList.add('show');
+  renderCartItems();
+}
+
+function closeCart() {
+  document.getElementById('cart-ov').classList.remove('show');
+  document.getElementById('cart-sheet').classList.remove('show');
+}
+
+// Submit order
+function submitOrder() {
+  if (!cart.length) return;
+  if (tableNo === '-') { showToast('❌ ไม่พบหมายเลขโต๊ะ'); return; }
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังส่ง...';
+  var total = cart.reduce(function(s,i){return s+i.qty*i.price},0);
+  var orderData = {
+    tableNo: tableNo,
+    orderType: 'dine-in',
+    items: cart.map(function(c){ return { id:c.id, name:c.name, price:c.price, qty:c.qty, spice:c.spice, note:c.note }; }),
+    total: total,
+    discount: 0,
+    discountType: '',
+    grandTotal: total,
+    payment: '',
+    note: '',
+    cashier: 'ลูกค้าสั่งเอง',
+    customerCount: 1
+  };
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.success) {
+        document.getElementById('success-oid').textContent = '🧾 Order: '+r.orderId;
+        document.getElementById('success-page').classList.add('show');
+        closeCart();
+        cart = [];
+        updateCartUI();
+      } else {
+        showToast('❌ '+(r&&r.message||'ไม่สำเร็จ'));
+      }
+      btn.disabled = false;
+      btn.textContent = '✅ ยืนยันสั่งอาหาร';
+    })
+    .withFailureHandler(function(e) {
+      showToast('❌ '+e.message);
+      btn.disabled = false;
+      btn.textContent = '✅ ยืนยันสั่งอาหาร';
+    })
+    .saveOrder(orderData);
+}
+
+function orderAgain() {
+  document.getElementById('success-page').classList.remove('show');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('m-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show')}, 2500);
+}
+
+window.onload = loadMenu;
+</script>
+</body>
+</html>
