@@ -1,8 +1,12 @@
+// Local build helper for combining POS HTML fragments into index.html
+// This file is intended to run with Node.js only, not in Google Apps Script.
+
 const fs = require('fs');
-const s = fs.readFileSync('pos_styles.html', 'utf8');
-const b = fs.readFileSync('pos_body.html', 'utf8');
-const j1 = fs.readFileSync('pos_js1.html', 'utf8');
-const j2 = fs.readFileSync('pos_js2.html', 'utf8');
+
+function readFile(name) {
+  return fs.readFileSync(name, 'utf8');
+}
+
 const html = [
   '<!DOCTYPE html>',
   '<html lang="th">',
@@ -10,14 +14,15 @@ const html = [
   '<meta charset="UTF-8">',
   '<meta name="viewport" content="width=device-width,initial-scale=1.0">',
   '<title>POS - ลาบบ้านสวน</title>',
-  s,
+  readFile('pos_styles.html'),
   '</head>',
   '<body>',
-  b,
-  j1,
-  j2,
+  readFile('pos_body.html'),
+  readFile('pos_js1.html'),
+  readFile('pos_js2.html'),
   '</body>',
   '</html>'
 ].join('\n');
+
 fs.writeFileSync('index.html', html, 'utf8');
 console.log('Built index.html OK -', fs.statSync('index.html').size, 'bytes');
