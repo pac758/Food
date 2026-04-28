@@ -357,11 +357,13 @@ function updateOrderStatus(orderId, status) {
   const oid = String(orderId).trim();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === oid) {
+      var oldStatus = String(data[i][12]);
       sh.getRange(i+1, 13).setValue(status);
-      return { success: true };
+      SpreadsheetApp.flush();
+      return { success: true, oldStatus: oldStatus, newStatus: status, row: i+1 };
     }
   }
-  return { success: false, message: 'ไม่พบ Order: ' + oid };
+  return { success: false, message: 'ไม่พบ Order: ' + oid + ' (rows: ' + data.length + ')' };
 }
 
 function cancelOrder(orderId, reason) {
