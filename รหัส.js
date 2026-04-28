@@ -70,11 +70,10 @@ function setupSheets() {
     sh.setFrozenRows(1);
   };
 
-  // ─── Products (ล้างแล้วใส่ใหม่ทุกครั้ง) ───
+  // ─── Products (สร้างครั้งแรกเท่านั้น ไม่ล้างของเดิม) ───
   let p = ss.getSheetByName(SHEET_PRODUCTS);
   if (!p) p = ss.insertSheet(SHEET_PRODUCTS);
-  {
-    p.clear();
+  if (!p.getRange('A1').getValue()) {
     p.appendRow(['id','name','category','price','stock','unit','active',
                  'emoji','spice_default','options','cost','sort_order']);
     headerStyle(p, 12);
@@ -781,4 +780,30 @@ function clearTestOrders() {
   
   SpreadsheetApp.flush();
   return { cleared: rowsToDelete.length, items: itemRowsToDelete.length, date: today };
+}
+
+// Remove duplicate products - keep first occurrence of each ID
+function deduplicateProducts() {
+  const sh = getSheet_(SHEET_PRODUCTS);
+  const data = sh.getDataRange().getValues();
+  const seen = {};
+  const rowsToDelete = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    const id = String(data[i][0]).trim();
+    if (!id) { rowsToDelete.push(i + 1); continue; }
+    if (seen[id]) {
+      rowsToDelete.push(i + 1); // duplicate - mark for deletion
+    } else {
+      seen[id] = true;
+    }
+  }
+  
+  // Delete in reverse to avoid row shifting
+  for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+    sh.deleteRow(rowsToDelete[i]);
+  }
+  
+  SpreadsheetApp.flush();
+  return { removed: rowsToDelete.length, remaining: Object.keys(seen).length };
 }
