@@ -2,7 +2,11 @@ pos_styles.html
 pos_body.html
 pos_js1.html
 pos_js2.html
-# Local build helper; not deployed to Apps Script
+build.js
+# Local directories; not deployed to Apps Script
 temp_script_pull/**
-.clasp.json
+temp_check/**
 tools/**
+.clasp.json
+.git/**
+.gitignore

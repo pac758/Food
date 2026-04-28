@@ -535,14 +535,20 @@ function getTableStatus() {
       });
 
       if (activeOrder) {
+        var orderTime = activeOrder[2];
+        if (orderTime instanceof Date) {
+          orderTime = Utilities.formatDate(orderTime, 'Asia/Bangkok', 'HH:mm');
+        } else {
+          orderTime = String(orderTime || '');
+        }
         tables.push({
           no: t,
           status: String(activeOrder[12]),
           orderId: String(activeOrder[0]),
           orderType: String(activeOrder[4]),
           total: Number(activeOrder[8]) || 0,
-          time: String(activeOrder[2] || ''),
-          itemCount: 0
+          time: orderTime,
+          itemCount: countOrderItems_(String(activeOrder[0]))
         });
         continue;
       }
@@ -582,6 +588,14 @@ function getTableStatus() {
 function getTableDetail(orderId) {
   if (!orderId) return { items: [] };
   return { items: getOrderItems_(orderId) };
+}
+
+function countOrderItems_(orderId) {
+  try {
+    const sh = getSheet_(SHEET_ITEMS);
+    const data = sh.getDataRange().getValues();
+    return data.slice(1).filter(r => String(r[0]) === orderId).length;
+  } catch(e) { return 0; }
 }
 
 // ── Reports ──────────────────────────────────────────────────
