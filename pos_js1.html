@@ -1,177 +1,177 @@
 <script>
-let products=[],cart=[],selPay_='เงินสด',curCat='all',settings={},staffName='',pendingItem=null;
+    let products = [], cart = [], selPay_ = 'เงินสด', curCat = 'all', settings = {}, staffName = '', pendingItem = null;
 
-// LOGIN
-let pin='';
-function pinKey(n){if(pin.length<4){pin+=n;updDots()}}
-function pinDel(){pin=pin.slice(0,-1);updDots()}
-function updDots(){for(let i=0;i<4;i++)document.getElementById('d'+i).classList.toggle('filled',i<pin.length)}
-function pinSubmit(){
-  if(pin.length!==4)return;
-  document.getElementById('pin-err').textContent='กำลังตรวจสอบ...';
-  google.script.run.withSuccessHandler(function(r){
-    if(r.success){staffName=r.name;document.getElementById('login').classList.add('hidden');document.getElementById('topbar').style.display='flex';document.getElementById('staff-name').textContent=r.name;loadAll()}
-    else{document.getElementById('pin-err').textContent='❌ PIN ไม่ถูกต้อง';pin='';updDots()}
-  }).withFailureHandler(function(){document.getElementById('pin-err').textContent='เกิดข้อผิดพลาด';pin='';updDots()}).loginWithPin(pin);
-}
-
-// CLOCK
-function updClock(){var n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('th-TH',{weekday:'short',month:'short',day:'numeric'})+' '+n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}
-setInterval(updClock,1000);updClock();
-
-// NAV
-function nav(p){
-  document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active')});
-  document.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active')});
-  var el=document.getElementById('page-'+p);if(el)el.classList.add('active');
-  var tb=document.querySelector('[data-p="'+p+'"]');if(tb)tb.classList.add('active');
-  if(p==='tables')loadTables();
-  if(p==='orders')loadOrders();
-  if(p==='report'){setToday();loadReport()}
-  if(p==='products')renderProdTable();
-}
-
-// LOAD ALL
-function loadAll(){
-  google.script.run.withSuccessHandler(function(d){
-    if(d.debug){document.title='DEBUG: '+d.debug}
-    products=d.products||[];settings=d.settings||{};
-    if(!products.length && d.debug){
-      document.getElementById('prod-grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#F39C12;font-size:12px;word-break:break-all">DEBUG: '+d.debug+'</div>';
+    // LOGIN
+    let pin = '';
+    function pinKey(n) { if (pin.length < 4) { pin += n; updDots() } }
+    function pinDel() { pin = pin.slice(0, -1); updDots() }
+    function updDots() { for (let i = 0; i < 4; i++)document.getElementById('d' + i).classList.toggle('filled', i < pin.length) }
+    function pinSubmit() {
+      if (pin.length !== 4) return;
+      document.getElementById('pin-err').textContent = 'กำลังตรวจสอบ...';
+      google.script.run.withSuccessHandler(function (r) {
+        if (r.success) { staffName = r.name; document.getElementById('login').classList.add('hidden'); document.getElementById('topbar').style.display = 'flex'; document.getElementById('staff-name').textContent = r.name; loadAll() }
+        else { document.getElementById('pin-err').textContent = '❌ PIN ไม่ถูกต้อง'; pin = ''; updDots() }
+      }).withFailureHandler(function () { document.getElementById('pin-err').textContent = 'เกิดข้อผิดพลาด'; pin = ''; updDots() }).loginWithPin(pin);
     }
-    applySettings();renderCats();renderProds();renderProdTable();fillTableSel();
-    nav('pos');
-  }).withFailureHandler(function(e){
-    toast('โหลดผิดพลาด: '+(e&&e.message?e.message:'unknown'),'err');
-    document.getElementById('prod-grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:#E74C3C">❌ Error: '+(e&&e.message?e.message:'unknown')+'</div>';
-  }).getAllData();
-}
-function applySettings(){
-  var n=settings.shop_name||'ลาบบ้านสวน';
-  document.getElementById('shop-label').textContent=n;
-  document.getElementById('s-name').value=n;
-  document.getElementById('s-phone').value=settings.shop_phone||'';
-  document.getElementById('s-pp').value=settings.promptpay_id||'';
-  document.getElementById('s-tables').value=settings.table_count||10;
-  document.getElementById('s-studisc').value=settings.promo_student_discount||10;
-  document.getElementById('s-famprice').value=settings.promo_family_price||299;
-}
-function fillTableSel(){
-  var s=document.getElementById('table-sel'),c=Number(settings.table_count)||10;
-  s.innerHTML='<option value="-">โต๊ะ -</option>';
-  for(var i=1;i<=c;i++)s.innerHTML+='<option value="'+i+'">โต๊ะ '+i+'</option>';
-}
 
-// CATEGORIES
-function renderCats(){
-  var cats=[...new Set(products.map(function(p){return p.category}))];
-  var bar=document.getElementById('cat-bar');
-  bar.innerHTML='<button class="cat-pill active" onclick="fCat(\'all\',this)">ทั้งหมด</button>';
-  cats.forEach(function(c){bar.innerHTML+='<button class="cat-pill" onclick="fCat(\''+c.replace(/'/g,"\\'")+'\',this)">'+c+'</button>'});
-  var dl=document.getElementById('cat-dl');
-  if(dl)dl.innerHTML=cats.map(function(c){return'<option value="'+c+'">'}).join('');
-}
-function fCat(c,el){
-  curCat=c;
-  document.querySelectorAll('.cat-pill').forEach(function(b){b.classList.remove('active')});
-  if(el)el.classList.add('active');
-  renderProds();
-}
+    // CLOCK
+    function updClock() { var n = new Date(); document.getElementById('clock').textContent = n.toLocaleDateString('th-TH', { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + n.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) }
+    setInterval(updClock, 1000); updClock();
 
-// PRODUCTS GRID
-function renderProds(){
-  var q=(document.getElementById('sq').value||'').toLowerCase();
-  var grid=document.getElementById('prod-grid');
-  var list=products.filter(function(p){
-    var co=curCat==='all'||p.category===curCat;
-    var qo=!q||p.name.toLowerCase().indexOf(q)!==-1;
-    return co&&qo;
-  });
-  if(!list.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--t2)">ไม่พบเมนู</div>';return}
-  grid.innerHTML=list.map(function(p){
-    var ic=cart.find(function(c){return c.id===p.id});
-    var oos=p.stock<=0;
-    return'<div class="pc'+(oos?' out':'')+'" onclick="addItem(\''+p.id+'\')">'+
-      (ic?'<div class="badge">'+ic.qty+'</div>':'')+
-      '<div class="em">'+p.emoji+'</div><div class="nm">'+p.name+'</div>'+
-      '<div class="pr">฿'+p.price+'</div>'+
-      '<div class="st">'+(oos?'หมด':p.unit)+'</div></div>';
-  }).join('');
-}
+    // NAV
+    function nav(p) {
+      document.querySelectorAll('.page').forEach(function (x) { x.classList.remove('active') });
+      document.querySelectorAll('.tab-btn').forEach(function (x) { x.classList.remove('active') });
+      var el = document.getElementById('page-' + p); if (el) el.classList.add('active');
+      var tb = document.querySelector('[data-p="' + p + '"]'); if (tb) tb.classList.add('active');
+      if (p === 'tables') loadTables();
+      if (p === 'orders') loadOrders();
+      if (p === 'report') { setToday(); loadReport() }
+      if (p === 'products') renderProdTable();
+    }
 
-// ADD TO CART
-function addItem(id){
-  var p=products.find(function(x){return x.id===id});
-  if(!p)return;
-  if(p.spice_default){pendingItem=p;openSpice(p);return}
-  pushCart(p,'','','');
-}
-function openSpice(p){
-  document.getElementById('spice-title').textContent=p.emoji+' '+p.name+' — เลือกระดับเผ็ด';
-  document.querySelectorAll('.spice-b').forEach(function(b){b.classList.remove('active')});
-  document.querySelectorAll('.spice-b')[2].classList.add('active');
-  var optsDiv=document.getElementById('spice-opts');optsDiv.innerHTML='';
-  if(p.options){
-    var parts=p.options.split(',');
-    parts.forEach(function(o){
-      var kv=o.split(':');
-      if(kv.length===2)optsDiv.innerHTML+='<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:4px 0;cursor:pointer"><input type="checkbox" class="opt-cb" value="'+o+'"> '+kv[0]+' (+฿'+kv[1]+')</label>';
-    });
-  }
-  document.getElementById('item-note').value='';
-  document.getElementById('spice-modal').style.display='flex';
-}
-function pickSpice(lv){document.querySelectorAll('.spice-b').forEach(function(b){b.classList.toggle('active',b.textContent.indexOf(lv)!==-1)})}
-function confirmAdd(){
-  if(!pendingItem)return;
-  var sp='';document.querySelectorAll('.spice-b.active').forEach(function(b){sp=b.textContent.split('\n').pop().trim()});
-  var opts=[];document.querySelectorAll('.opt-cb:checked').forEach(function(cb){opts.push(cb.value)});
-  var note=document.getElementById('item-note').value.trim();
-  pushCart(pendingItem,sp,opts.join(','),note);
-  closeM('spice-modal');pendingItem=null;
-}
-function pushCart(p,spice,opts,note){
-  var optExtra=0;
-  if(opts){opts.split(',').forEach(function(o){var kv=o.split(':');if(kv[1])optExtra+=Number(kv[1])})}
-  var key=p.id+'|'+spice+'|'+opts+'|'+note;
-  var ex=cart.find(function(c){return c.key===key});
-  if(ex){ex.qty++}
-  else{cart.push({key:key,id:p.id,name:p.name,price:p.price+optExtra,basePrice:p.price,qty:1,unit:p.unit,spice:spice,options:opts,note:note,emoji:p.emoji})}
-  renderCart();renderProds();
-}
+    // LOAD ALL
+    function loadAll() {
+      google.script.run.withSuccessHandler(function (d) {
+        if (d.debug) { document.title = 'DEBUG: ' + d.debug }
+        products = d.products || []; settings = d.settings || {};
+        if (!products.length && d.debug) {
+          document.getElementById('prod-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#F39C12;font-size:12px;word-break:break-all">DEBUG: ' + d.debug + '</div>';
+        }
+        applySettings(); renderCats(); renderProds(); renderProdTable(); fillTableSel();
+        nav('pos');
+      }).withFailureHandler(function (e) {
+        toast('โหลดผิดพลาด: ' + (e && e.message ? e.message : 'unknown'), 'err');
+        document.getElementById('prod-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#E74C3C">❌ Error: ' + (e && e.message ? e.message : 'unknown') + '</div>';
+      }).getAllData();
+    }
+    function applySettings() {
+      var n = settings.shop_name || 'ลาบบ้านสวน';
+      document.getElementById('shop-label').textContent = n;
+      document.getElementById('s-name').value = n;
+      document.getElementById('s-phone').value = settings.shop_phone || '';
+      document.getElementById('s-pp').value = settings.promptpay_id || '';
+      document.getElementById('s-tables').value = settings.table_count || 10;
+      document.getElementById('s-studisc').value = settings.promo_student_discount || 10;
+      document.getElementById('s-famprice').value = settings.promo_family_price || 299;
+    }
+    function fillTableSel() {
+      var s = document.getElementById('table-sel'), c = Number(settings.table_count) || 10;
+      s.innerHTML = '<option value="-">โต๊ะ -</option>';
+      for (var i = 1; i <= c; i++)s.innerHTML += '<option value="' + i + '">โต๊ะ ' + i + '</option>';
+    }
 
-// CART
-function changeQty(key,d){
-  var i=cart.find(function(x){return x.key===key});
-  if(!i)return;i.qty+=d;
-  if(i.qty<=0)cart=cart.filter(function(x){return x.key!==key});
-  renderCart();renderProds();
-}
-function clearCart(){cart=[];renderCart();renderProds()}
-function renderCart(){
-  var el=document.getElementById('cart-items');
-  if(!cart.length){el.innerHTML='<div class="cart-empty"><div class="ic">🛒</div><div>เลือกเมนูเพื่อเริ่มสั่ง</div></div>';document.getElementById('checkout-btn').disabled=true;calcTotal();return}
-  el.innerHTML=cart.map(function(i){
-    var meta=[];if(i.spice)meta.push('🌶️'+i.spice);if(i.note)meta.push('📝'+i.note);
-    return'<div class="ci"><div class="info"><div class="nm">'+i.emoji+' '+i.name+'</div>'+(meta.length?'<div class="meta">'+meta.join(' ')+'</div>':'')+'</div>'+
-    '<div class="ctrls"><button class="qb" onclick="changeQty(\''+i.key.replace(/'/g,"\\'")+'\',-1)">−</button><div class="qty">'+i.qty+'</div><button class="qb" onclick="changeQty(\''+i.key.replace(/'/g,"\\'")+'\',1)">+</button></div>'+
-    '<div class="sub">฿'+(i.qty*i.price)+'</div></div>';
-  }).join('');
-  document.getElementById('checkout-btn').disabled=false;calcTotal();
-}
-function calcTotal(){
-  var sub=cart.reduce(function(s,i){return s+i.qty*i.price},0);
-  var disc=Number(document.getElementById('disc-input').value)||0;
-  var grand=Math.max(0,sub-disc);
-  document.getElementById('v-sub').textContent='฿'+sub;
-  document.getElementById('v-grand').textContent='฿'+grand;
-  document.getElementById('checkout-btn').textContent='ชำระเงิน ฿'+grand;
-}
-function selPay(btn,m){selPay_=m;document.querySelectorAll('.pay-b').forEach(function(b){b.classList.remove('active')});btn.classList.add('active')}
-function applyStudentDisc(){
-  var sub=cart.reduce(function(s,i){return s+i.qty*i.price},0);
-  var pct=Number(settings.promo_student_discount)||10;
-  document.getElementById('disc-input').value=Math.round(sub*pct/100);calcTotal();
-  toast('🎓 ส่วนลดนักเรียน/ครู '+pct+'%','ok');
-}
-</script>
+    // CATEGORIES
+    function renderCats() {
+      var cats = [...new Set(products.map(function (p) { return p.category }))];
+      var bar = document.getElementById('cat-bar');
+      bar.innerHTML = '<button class="cat-pill active" onclick="fCat(\'all\',this)">ทั้งหมด</button>';
+      cats.forEach(function (c) { bar.innerHTML += '<button class="cat-pill" onclick="fCat(\'' + c.replace(/'/g, "\\'") + '\',this)">' + c + '</button>' });
+      var dl = document.getElementById('cat-dl');
+      if (dl) dl.innerHTML = cats.map(function (c) { return '<option value="' + c + '">' }).join('');
+    }
+    function fCat(c, el) {
+      curCat = c;
+      document.querySelectorAll('.cat-pill').forEach(function (b) { b.classList.remove('active') });
+      if (el) el.classList.add('active');
+      renderProds();
+    }
+
+    // PRODUCTS GRID
+    function renderProds() {
+      var q = (document.getElementById('sq').value || '').toLowerCase();
+      var grid = document.getElementById('prod-grid');
+      var list = products.filter(function (p) {
+        var co = curCat === 'all' || p.category === curCat;
+        var qo = !q || p.name.toLowerCase().indexOf(q) !== -1;
+        return co && qo;
+      });
+      if (!list.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--t2)">ไม่พบเมนู</div>'; return }
+      grid.innerHTML = list.map(function (p) {
+        var ic = cart.find(function (c) { return c.id === p.id });
+        var oos = p.stock <= 0;
+        return '<div class="pc' + (oos ? ' out' : '') + '" onclick="addItem(\'' + p.id + '\')">' +
+          (ic ? '<div class="badge">' + ic.qty + '</div>' : '') +
+          '<div class="em">' + p.emoji + '</div><div class="nm">' + p.name + '</div>' +
+          '<div class="pr">฿' + p.price + '</div>' +
+          '<div class="st">' + (oos ? 'หมด' : p.unit) + '</div></div>';
+      }).join('');
+    }
+
+    // ADD TO CART
+    function addItem(id) {
+      var p = products.find(function (x) { return x.id === id });
+      if (!p) return;
+      if (p.spice_default) { pendingItem = p; openSpice(p); return }
+      pushCart(p, '', '', '');
+    }
+    function openSpice(p) {
+      document.getElementById('spice-title').textContent = p.emoji + ' ' + p.name + ' — เลือกระดับเผ็ด';
+      document.querySelectorAll('.spice-b').forEach(function (b) { b.classList.remove('active') });
+      document.querySelectorAll('.spice-b')[2].classList.add('active');
+      var optsDiv = document.getElementById('spice-opts'); optsDiv.innerHTML = '';
+      if (p.options) {
+        var parts = p.options.split(',');
+        parts.forEach(function (o) {
+          var kv = o.split(':');
+          if (kv.length === 2) optsDiv.innerHTML += '<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:4px 0;cursor:pointer"><input type="checkbox" class="opt-cb" value="' + o + '"> ' + kv[0] + ' (+฿' + kv[1] + ')</label>';
+        });
+      }
+      document.getElementById('item-note').value = '';
+      document.getElementById('spice-modal').style.display = 'flex';
+    }
+    function pickSpice(lv) { document.querySelectorAll('.spice-b').forEach(function (b) { b.classList.toggle('active', b.textContent.indexOf(lv) !== -1) }) }
+    function confirmAdd() {
+      if (!pendingItem) return;
+      var sp = ''; document.querySelectorAll('.spice-b.active').forEach(function (b) { sp = b.textContent.split('\n').pop().trim() });
+      var opts = []; document.querySelectorAll('.opt-cb:checked').forEach(function (cb) { opts.push(cb.value) });
+      var note = document.getElementById('item-note').value.trim();
+      pushCart(pendingItem, sp, opts.join(','), note);
+      closeM('spice-modal'); pendingItem = null;
+    }
+    function pushCart(p, spice, opts, note) {
+      var optExtra = 0;
+      if (opts) { opts.split(',').forEach(function (o) { var kv = o.split(':'); if (kv[1]) optExtra += Number(kv[1]) }) }
+      var key = p.id + '|' + spice + '|' + opts + '|' + note;
+      var ex = cart.find(function (c) { return c.key === key });
+      if (ex) { ex.qty++ }
+      else { cart.push({ key: key, id: p.id, name: p.name, price: p.price + optExtra, basePrice: p.price, qty: 1, unit: p.unit, spice: spice, options: opts, note: note, emoji: p.emoji }) }
+      renderCart(); renderProds();
+    }
+
+    // CART
+    function changeQty(key, d) {
+      var i = cart.find(function (x) { return x.key === key });
+      if (!i) return; i.qty += d;
+      if (i.qty <= 0) cart = cart.filter(function (x) { return x.key !== key });
+      renderCart(); renderProds();
+    }
+    function clearCart() { cart = []; renderCart(); renderProds() }
+    function renderCart() {
+      var el = document.getElementById('cart-items');
+      if (!cart.length) { el.innerHTML = '<div class="cart-empty"><div class="ic">🛒</div><div>เลือกเมนูเพื่อเริ่มสั่ง</div></div>'; document.getElementById('checkout-btn').disabled = true; calcTotal(); return }
+      el.innerHTML = cart.map(function (i) {
+        var meta = []; if (i.spice) meta.push('🌶️' + i.spice); if (i.note) meta.push('📝' + i.note);
+        return '<div class="ci"><div class="info"><div class="nm">' + i.emoji + ' ' + i.name + '</div>' + (meta.length ? '<div class="meta">' + meta.join(' ') + '</div>' : '') + '</div>' +
+          '<div class="ctrls"><button class="qb" onclick="changeQty(\'' + i.key.replace(/'/g, "\\'") + '\',-1)">−</button><div class="qty">' + i.qty + '</div><button class="qb" onclick="changeQty(\'' + i.key.replace(/'/g, "\\'") + '\',1)">+</button></div>' +
+          '<div class="sub">฿' + (i.qty * i.price) + '</div></div>';
+      }).join('');
+      document.getElementById('checkout-btn').disabled = false; calcTotal();
+    }
+    function calcTotal() {
+      var sub = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
+      var disc = Number(document.getElementById('disc-input').value) || 0;
+      var grand = Math.max(0, sub - disc);
+      document.getElementById('v-sub').textContent = '฿' + sub;
+      document.getElementById('v-grand').textContent = '฿' + grand;
+      document.getElementById('checkout-btn').textContent = 'ชำระเงิน ฿' + grand;
+    }
+    function selPay(btn, m) { selPay_ = m; document.querySelectorAll('.pay-b').forEach(function (b) { b.classList.remove('active') }); btn.classList.add('active') }
+    function applyStudentDisc() {
+      var sub = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
+      var pct = Number(settings.promo_student_discount) || 10;
+      document.getElementById('disc-input').value = Math.round(sub * pct / 100); calcTotal();
+      toast('🎓 ส่วนลดนักเรียน/ครู ' + pct + '%', 'ok');
+    }
+  </script>
