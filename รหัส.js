@@ -986,23 +986,40 @@ function syncFoodImages() {
   }
 }
 
-// Serve image as base64 (called from menu page)
+// Serve image as base64 with caching (called from menu page)
 function getImageData(fileId) {
   try {
+    var cache = CacheService.getScriptCache();
     var file = DriveApp.getFileById(fileId);
+    var lastUp = file.getLastUpdated().getTime();
+    var cacheKey = 'img_' + fileId + '_' + lastUp;
+    
+    // Check cache first
+    var cached = cache.get(cacheKey);
+    if (cached) return cached;
+    
     var blob = file.getBlob();
     var bytes = blob.getBytes();
     var type = blob.getContentType();
-    // Convert PNG to JPEG for smaller size
-    if (type === 'image/png' && bytes.length > 200000) {
+    
+    // Convert PNG > 300KB to JPEG for smaller payload
+    if (type === 'image/png' && bytes.length > 300000) {
       try {
         blob = blob.getAs('image/jpeg');
         bytes = blob.getBytes();
         type = 'image/jpeg';
       } catch(ce) {}
     }
-    if (bytes.length > 2000000) return ''; // Skip if > 2MB
-    return 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
+    
+    // Allow up to 8MB
+    if (bytes.length > 8000000) return '';
+    
+    var dataUri = 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
+    
+    // Cache for 6 hours (max 21600 seconds)
+    try { cache.put(cacheKey, dataUri, 21600); } catch(ce) {}
+    
+    return dataUri;
   } catch(e) {
     return '';
   }

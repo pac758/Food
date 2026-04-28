@@ -170,9 +170,12 @@ document.getElementById('m-table-badge').textContent = 'โต๊ะ ' + tableNo
 function loadMenu() {
   google.script.run.withSuccessHandler(function(data) {
     products = data.products || [];
-    // DEBUG: check image_url
+    // DEBUG: show on page
     var withImg = products.filter(function(p){return p.image_url});
-    console.warn('IMG_DEBUG Products with image_url:', withImg.length, JSON.stringify(withImg.map(function(p){return p.id+':'+p.image_url.substring(0,40)})));
+    var debugEl = document.createElement('div');
+    debugEl.style.cssText = 'background:#222;color:#0f0;padding:8px;font-size:12px;font-family:monospace;word-break:break-all';
+    debugEl.textContent = 'DEBUG: ' + withImg.length + ' images | ' + JSON.stringify(products.slice(0,3).map(function(p){return p.id+'='+String(p.image_url||'').substring(0,50)}));
+    document.getElementById('menu-area').before(debugEl);
     categories = [];
     var catSet = {};
     products.forEach(function(p) {
