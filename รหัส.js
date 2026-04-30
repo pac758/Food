@@ -1014,12 +1014,17 @@ function getReport(startDate, endDate) {
   const orders = oSh.getDataRange().getValues().slice(1);
   const items = iSh.getDataRange().getValues().slice(1);
 
-  const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-  const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+  const startStr = String(startDate).trim();
+  const endStr = String(endDate).trim();
 
   const filtered = orders.filter(r => {
-    const d = new Date(r[1]);
-    return d >= start && d <= end && r[12] !== 'cancelled';
+    var rowDate = r[1];
+    if (rowDate instanceof Date) {
+      rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+    } else {
+      rowDate = String(rowDate).trim();
+    }
+    return rowDate >= startStr && rowDate <= endStr && String(r[12]) !== 'cancelled';
   });
 
   const totalSales = filtered.reduce((s, r) => s + Number(r[8]), 0);
@@ -1051,9 +1056,10 @@ function getReport(startDate, endDate) {
   // Daily breakdown
   const dailyMap = {};
   filtered.forEach(r => {
-    if (!dailyMap[r[1]]) dailyMap[r[1]] = { sales: 0, orders: 0 };
-    dailyMap[r[1]].sales += Number(r[8]);
-    dailyMap[r[1]].orders++;
+    var dk = r[1] instanceof Date ? Utilities.formatDate(r[1], 'Asia/Bangkok', 'yyyy-MM-dd') : String(r[1]).trim();
+    if (!dailyMap[dk]) dailyMap[dk] = { sales: 0, orders: 0 };
+    dailyMap[dk].sales += Number(r[8]);
+    dailyMap[dk].orders++;
   });
   const daily = Object.entries(dailyMap)
     .sort((a, b) => a[0] > b[0] ? 1 : -1)
