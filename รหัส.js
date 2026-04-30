@@ -1018,6 +1018,16 @@ function countOrderItems_(orderId) {
   } catch (e) { return 0; }
 }
 
+// ── Dashboard ────────────────────────────────────────────────
+function getDashboardData() {
+  var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+  var report = getReport(today, today);
+  // Add recent 5 orders
+  var recent = getOrderHistory(1).slice(0, 5);
+  report.recentOrders = recent;
+  return report;
+}
+
 // ── Reports ──────────────────────────────────────────────────
 function getReport(startDate, endDate) {
   const oSh = getSheet_(SHEET_ORDERS);
