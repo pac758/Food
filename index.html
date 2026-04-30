@@ -1554,19 +1554,25 @@ tr:hover td { background:rgba(255,255,255,.02) }
 
           // Body content
           var bodyHtml = '';
-          if (t.time) {
-            bodyHtml += '<div class="tbl-info-row"><i class="bi bi-clock"></i> ' + t.time + '</div>';
-          }
-          if (t.itemCount) {
-            var served = t.servedCount || 0;
-            var total = t.totalItems || t.itemCount;
-            var pct = total > 0 ? Math.round(served / total * 100) : 0;
-            var pColor = pct === 100 ? '#2ECC71' : pct > 0 ? '#F39C12' : '#E74C3C';
-            bodyHtml += '<div class="tbl-info-row"><i class="bi bi-check2-circle"></i> <span style="color:' + pColor + ';font-weight:600">' + served + '/' + total + '</span> เสิร์ฟ</div>' +
-              '<div class="tbl-progress-wrap"><div class="tbl-progress-bar" style="background:' + pColor + ';width:' + pct + '%"></div></div>';
-          }
-          if (cls === 'st-ordering') {
+          if (t.status === 'reserved' || t.status === 'arrived' || t.status === 'seated') {
+            // Show reservation info on card
+            if (t.customerName) bodyHtml += '<div class="tbl-info-row"><i class="bi bi-person"></i> ' + t.customerName + '</div>';
+            if (t.time) bodyHtml += '<div class="tbl-info-row"><i class="bi bi-clock"></i> ' + t.time + '</div>';
+            if (t.partySize) bodyHtml += '<div class="tbl-info-row"><i class="bi bi-people"></i> ' + t.partySize + ' คน</div>';
+          } else if (cls === 'st-ordering') {
             bodyHtml = '<div class="tbl-info-row"><i class="bi bi-pencil-square"></i> ' + cart.length + ' รายการในตะกร้า</div>';
+          } else {
+            if (t.time) {
+              bodyHtml += '<div class="tbl-info-row"><i class="bi bi-clock"></i> ' + t.time + '</div>';
+            }
+            if (t.itemCount) {
+              var served = t.servedCount || 0;
+              var total = t.totalItems || t.itemCount;
+              var pct = total > 0 ? Math.round(served / total * 100) : 0;
+              var pColor = pct === 100 ? '#2ECC71' : pct > 0 ? '#F39C12' : '#E74C3C';
+              bodyHtml += '<div class="tbl-info-row"><i class="bi bi-check2-circle"></i> <span style="color:' + pColor + ';font-weight:600">' + served + '/' + total + '</span> เสิร์ฟ</div>' +
+                '<div class="tbl-progress-wrap"><div class="tbl-progress-bar" style="background:' + pColor + ';width:' + pct + '%"></div></div>';
+            }
           }
 
           // Footer
@@ -1681,6 +1687,8 @@ tr:hover td { background:rgba(255,255,255,.02) }
         acts = '';
         if (t.status === 'reserved') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateReservationStatus(\'' + t.reservationId + '\',\'arrived\')">👥 ลูกค้ามาแล้ว</button>';
         if (t.status === 'arrived') acts += '<button class="btn-save" style="background:#2ECC71" onclick="updateReservationStatus(\'' + t.reservationId + '\',\'seated\')">🪑 นั่งแล้ว</button>';
+        if (t.status === 'seated') acts += '<button class="btn-save" style="background:#FF6B35" onclick="closeM(\'tbl-modal\');selectTable(' + t.no + ')">🛒 สั่งอาหาร</button>';
+        acts += '<button class="btn-save" style="background:#E74C3C" onclick="cancelReservation(\'' + t.reservationId + '\')">❌ ยกเลิกการจอง</button>';
         acts += '<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
       } else {
         var stMap2 = { 'new': '🆕 รอครัวทำ', 'cooking': '🔥 กำลังทำอาหาร', 'served': '✅ เสิร์ฟแล้ว' };
