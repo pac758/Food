@@ -25,6 +25,66 @@
   --b: rgba(255,255,255,.08);
   --rad: 14px;
   --glow: 0 0 20px rgba(255,107,53,.15);
+  --shadow: 0 2px 12px rgba(0,0,0,.3);
+  --card-img-bg: linear-gradient(135deg,#1e2a45,#253352);
+}
+
+/* ══════════════ LIGHT MODE ══════════════ */
+body.light {
+  --dk: #F0F2F5;
+  --dk2: #FFFFFF;
+  --mid: #E8ECF2;
+  --c: #E2E6ED;
+  --c2: #D5DAE3;
+  --t: #1A1A2E;
+  --t2: #5A6A80;
+  --b: rgba(0,0,0,.08);
+  --glow: 0 0 20px rgba(255,107,53,.1);
+  --shadow: 0 2px 12px rgba(0,0,0,.08);
+  --card-img-bg: linear-gradient(135deg,#e8ecf2,#d5dae3);
+}
+body.light #topbar { background:linear-gradient(135deg,#fff,#f8f9fb); border-bottom:1px solid #e0e4ea; box-shadow:0 1px 8px rgba(0,0,0,.06) }
+body.light .tab-btn { color:#5A6A80 }
+body.light .tab-btn.active { color:var(--p); background:rgba(255,107,53,.08) }
+body.light .logo { color:#1A1A2E }
+body.light #login { background:#F0F2F5 }
+body.light .login-box { background:#fff; border-color:#e0e4ea; box-shadow:0 8px 30px rgba(0,0,0,.08) }
+body.light .pin-btn { background:#f5f7fa; border-color:#e0e4ea; color:#1A1A2E }
+body.light .pin-btn:hover { background:#eef0f5; border-color:var(--p) }
+body.light .cmodal { background:#fff; border-color:#e0e4ea; box-shadow:0 12px 40px rgba(0,0,0,.1) }
+body.light .fg input, body.light .fg select, body.light .fg textarea { background:#f5f7fa; border-color:#e0e4ea; color:#1A1A2E }
+body.light #receipt-box { background:#fff; border:1px solid #e0e4ea }
+body.light #toast { background:#fff; border-color:#e0e4ea; box-shadow:0 4px 16px rgba(0,0,0,.1) }
+body.light .tbl-card { background:#fff; border-color:#e8ecf0 }
+body.light .tbl-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.1) }
+body.light .tbl-stat-pill { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.06) }
+body.light .pc { background:#fff; border-color:#e8ecf0 }
+body.light .pc:hover { box-shadow:0 6px 20px rgba(0,0,0,.08) }
+body.light .em { background:var(--card-img-bg) }
+body.light .cart-hd { background:#fff; border-color:#e0e4ea }
+body.light #pos-right { background:#fff; border-color:#e0e4ea }
+body.light .stat-c { background:#fff; border-color:#e8ecf0 }
+body.light .btn-s { background:#f0f2f5; border-color:#e0e4ea; color:#5A6A80 }
+body.light .btn-s:hover { background:#e8ecf2 }
+body.light .twrap table th { background:#f5f7fa; color:#5A6A80 }
+body.light .twrap table td { border-color:#f0f2f5 }
+
+/* Theme toggle button */
+.theme-toggle {
+  width:36px; height:36px; border-radius:10px;
+  border:1px solid var(--b); background:var(--c);
+  color:var(--t2); font-size:16px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .3s ease; margin-left:4px;
+}
+.theme-toggle:hover { background:var(--c2); color:var(--p); border-color:var(--p) }
+body.light .theme-toggle { background:#f0f2f5; border-color:#e0e4ea; color:#5A6A80 }
+body.light .theme-toggle:hover { background:#e8ecf2; color:var(--p) }
+
+/* Smooth transition for theme change */
+body, #topbar, .tbl-card, .pc, .cmodal, .login-box, #pos-right, .cart-hd, .stat-c, .btn-s,
+.fg input, .fg select, .fg textarea, .tab-btn, #toast {
+  transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent }
@@ -599,6 +659,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
     <button class="tab-btn" onclick="nav('orders')" data-p="orders">📜 ประวัติ</button>
     <button class="tab-btn" onclick="nav('report')" data-p="report">📊 รายงาน</button>
     <button class="tab-btn" onclick="nav('settings')" data-p="settings">⚙️</button>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="เปลี่ยนธีม"><i class="bi bi-sun-fill"></i></button>
     <span id="staff-name"></span>
     <div id="clock"></div>
   </div>
@@ -924,6 +985,25 @@ tr:hover td { background:rgba(255,255,255,.02) }
   <div id="toast"></div>
 
 <script>
+    // THEME
+    function toggleTheme() {
+      var isLight = document.body.classList.toggle('light');
+      localStorage.setItem('pos_theme', isLight ? 'light' : 'dark');
+      updateThemeIcon();
+    }
+    function updateThemeIcon() {
+      var btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      var isLight = document.body.classList.contains('light');
+      btn.innerHTML = isLight ? '<i class="bi bi-moon-stars-fill"></i>' : '<i class="bi bi-sun-fill"></i>';
+    }
+    // Apply saved theme immediately
+    (function() {
+      var saved = localStorage.getItem('pos_theme');
+      if (saved === 'light') document.body.classList.add('light');
+      updateThemeIcon();
+    })();
+
     let products = [], cart = [], selPay_ = 'เงินสด', curCat = 'all', settings = {}, staffName = '', pendingItem = null;
 
     // LOGIN
