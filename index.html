@@ -1138,7 +1138,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
         btn.disabled = false; btn.textContent = 'ชำระเงิน';
       }).withFailureHandler(function (e) { Swal.fire({ icon:'error', title:'ผิดพลาด', text:e&&e.message||'ไม่ทราบสาเหตุ', confirmButtonColor:'#FF6B35' }); btn.disabled = false; btn.textContent = 'ชำระเงิน' }).saveOrder(od);
     }
-    function reloadProds() { google.script.run.withSuccessHandler(function (p) { products = p; renderProds() }).getProducts() }
+    function reloadProds() { google.script.run.withSuccessHandler(function (p) { var imgMap={}; products.forEach(function(x){if(x.image_data)imgMap[x.id]=x.image_data}); p.forEach(function(x){if(!x.image_data&&imgMap[x.id])x.image_data=imgMap[x.id]}); products = p; renderProds() }).getProducts() }
 
     // RECEIPT
     function showReceipt(r, od) {
@@ -1520,7 +1520,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
         if (r.success) {
           closeM('prod-modal');
           Swal.fire({ icon:'success', title:id?'แก้ไขแล้ว':'เพิ่มแล้ว', timer:1500, showConfirmButton:false });
-          google.script.run.withSuccessHandler(function (p) { products = p; renderCats(); renderProds(); renderProdTable() }).getProducts()
+          google.script.run.withSuccessHandler(function (p) { var imgMap={}; products.forEach(function(x){if(x.image_data)imgMap[x.id]=x.image_data}); p.forEach(function(x){if(!x.image_data&&imgMap[x.id])x.image_data=imgMap[x.id]}); products = p; renderCats(); renderProds(); renderProdTable() }).getProducts()
         }
       })[fn](d);
     }
@@ -1528,7 +1528,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
       if (!confirm('ยืนยันลบสินค้านี้?')) return;
       google.script.run.withSuccessHandler(function () {
         toast('ลบแล้ว', 'ok');
-        google.script.run.withSuccessHandler(function (p) { products = p; renderCats(); renderProds(); renderProdTable() }).getProducts()
+        google.script.run.withSuccessHandler(function (p) { var imgMap={}; products.forEach(function(x){if(x.image_data)imgMap[x.id]=x.image_data}); p.forEach(function(x){if(!x.image_data&&imgMap[x.id])x.image_data=imgMap[x.id]}); products = p; renderCats(); renderProds(); renderProdTable() }).getProducts()
       }).deleteProduct(id);
     }
 
