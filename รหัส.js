@@ -284,7 +284,7 @@ function getProductsWithImages() {
     if (p.image_url) {
       try {
         var fid = resolveDriveId_(p.image_url);
-        if (fid) imgData = getImageData(fid);
+        if (fid) imgData = getCachedImageData_(fid);
       } catch (e) {}
     }
     return {
@@ -298,26 +298,30 @@ function getProductsWithImages() {
   });
 }
 
-// Customer menu - preload images server-side
+// Customer menu - fast load WITHOUT images
 function getMenuForCustomer() {
-  const prods = getProducts().map(p => {
-    var imgData = '';
-    if (p.image_url) {
-      try {
-        var fid = resolveDriveId_(p.image_url);
-        if (fid) imgData = getImageData(fid);
-      } catch (e) { imgData = 'ERR:' + e.message; }
-    }
+  var prods = getProducts().map(function(p) {
     return {
       id: p.id, name: p.name, category: p.category,
       price: p.price, unit: p.unit, emoji: p.emoji,
       spice_default: p.spice_default, options: p.options,
-      image_data: imgData,
-      has_drive: p.image_url ? String(p.image_url).substring(0, 40) : ''
+      image_url: p.image_url || ''
     };
   });
-  const sett = getSettings();
+  var sett = getSettings();
   return { products: prods, shopName: sett.shop_name || 'ลาบบ้านสวน' };
+}
+
+// Fetch a single product image (with 6hr cache)
+function getProductImage(productId) {
+  var prods = getProducts();
+  for (var i = 0; i < prods.length; i++) {
+    if (String(prods[i].id) === String(productId) && prods[i].image_url) {
+      var fid = resolveDriveId_(prods[i].image_url);
+      if (fid) return getCachedImageData_(fid);
+    }
+  }
+  return '';
 }
 
 
@@ -1306,7 +1310,7 @@ function getImageData(fileId) {
       muteHttpExceptions: true
     });
     if (response.getResponseCode() !== 200) {
-      return 'ERR:HTTP' + response.getResponseCode() + ':' + response.getContentText().substring(0, 100);
+      return 'ERR:HTTP' + response.getResponseCode();
     }
     var blob = response.getBlob();
     var bytes = blob.getBytes();
@@ -1319,11 +1323,24 @@ function getImageData(fileId) {
         type = 'image/jpeg';
       } catch (ce) { }
     }
-    if (bytes.length > 8000000) return 'ERR:file_too_large_' + bytes.length;
+    if (bytes.length > 8000000) return 'ERR:file_too_large';
     return 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
   } catch (e) {
     return 'ERR:' + e.message;
   }
+}
+
+// Cached version — stores in CacheService for 6 hours
+function getCachedImageData_(fileId) {
+  var cache = CacheService.getScriptCache();
+  var key = 'img_' + fileId;
+  var cached = cache.get(key);
+  if (cached) return cached;
+  var data = getImageData(fileId);
+  if (data && data.indexOf('data:') === 0 && data.length < 100000) {
+    try { cache.put(key, data, 21600); } catch(e) {}
+  }
+  return data;
 }
 
 // DIAGNOSTIC: Run from Editor to test Drive image access

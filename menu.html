@@ -184,7 +184,6 @@ var selectedSpice = 'กลาง';
 document.getElementById('m-table-badge').textContent = 'โต๊ะ ' + tableNo;
 
 function loadMenu() {
-  Swal.fire({ title:'กำลังโหลดเมนู...', html:'รอสักครู่', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
   google.script.run.withSuccessHandler(function(data) {
     products = data.products || [];
     categories = [];
@@ -192,12 +191,40 @@ function loadMenu() {
     products.forEach(function(p) {
       if (!catSet[p.category]) { catSet[p.category] = true; categories.push(p.category); }
     });
-    Swal.close();
     renderCats();
     renderMenu();
+    // Lazy load images in background
+    lazyLoadImages();
   }).withFailureHandler(function(e) {
-    Swal.fire({ icon:'error', title:'โหลดไม่สำเร็จ', text:e.message, confirmButtonColor:'#FF6B35' });
+    document.getElementById('menu-area').innerHTML = '<div class="empty">โหลดเมนูไม่สำเร็จ<br><button onclick="loadMenu()" style="margin-top:12px;padding:10px 20px;background:var(--p);color:#fff;border:none;border-radius:10px;cursor:pointer">ลองใหม่</button></div>';
   }).getMenuForCustomer();
+}
+
+function lazyLoadImages() {
+  var queue = products.filter(function(p) { return p.image_url; });
+  var idx = 0;
+  function loadNext() {
+    if (idx >= queue.length) return;
+    var p = queue[idx];
+    idx++;
+    google.script.run.withSuccessHandler(function(dataUri) {
+      if (dataUri && dataUri.indexOf('data:') === 0) {
+        // Store in products array
+        for (var i = 0; i < products.length; i++) {
+          if (products[i].id === p.id) { products[i].image_data = dataUri; break; }
+        }
+        // Update DOM directly
+        var el = document.getElementById('pimg-' + p.id);
+        if (el) {
+          el.outerHTML = '<div class="prod-img-wrap"><img class="prod-img" src="' + dataUri + '" alt="' + p.name + '" onerror="this.parentNode.outerHTML=\'<div class=prod-emoji>' + (p.emoji||'🍽️') + '</div>\'"></div>';
+        }
+      }
+      loadNext();
+    }).withFailureHandler(function() { loadNext(); }).getProductImage(p.id);
+  }
+  // Load 2 at a time for speed
+  loadNext();
+  loadNext();
 }
 
 function renderCats() {
@@ -229,7 +256,7 @@ function renderMenu() {
     if (p.image_data && p.image_data.indexOf('data:') === 0) {
       visual = '<div class="prod-img-wrap"><img class="prod-img" src="' + p.image_data + '" alt="' + p.name + '" onerror="this.parentNode.outerHTML=\'<div class=prod-emoji>' + (p.emoji||'🍽️') + '</div>\'"></div>';
     } else {
-      visual = '<div class="prod-emoji">'+(p.emoji||'🍽️')+'</div>';
+      visual = '<div class="prod-emoji" id="pimg-' + p.id + '">'+(p.emoji||'🍽️')+'</div>';
     }
     h += '<div class="prod-card" onclick="addItem('+i+')">' +
       visual +
