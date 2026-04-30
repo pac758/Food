@@ -357,58 +357,102 @@ tr:hover td { background:rgba(255,255,255,.02) }
 .abtn.del:hover { background:rgba(231,76,60,.15); color:var(--r) }
 
 /* ══════════════ TABLES PAGE ══════════════ */
-.tbl-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; padding:4px }
+.tbl-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; padding:8px 0 }
 @media(max-width:1200px) { .tbl-grid { grid-template-columns:repeat(4,1fr) } }
 @media(max-width:992px)  { .tbl-grid { grid-template-columns:repeat(3,1fr) } }
 @media(max-width:700px)  { .tbl-grid { grid-template-columns:repeat(2,1fr) } }
 @media(max-width:420px)  { .tbl-grid { grid-template-columns:1fr } }
+
+.tbl-stats {
+  display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;
+}
+.tbl-stat-pill {
+  display:flex; align-items:center; gap:7px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06);
+  border-radius:12px; padding:8px 16px; font-size:13px; font-weight:600;
+  backdrop-filter:blur(8px); transition:.2s;
+}
+.tbl-stat-pill:hover { background:rgba(255,255,255,.07) }
+.tbl-stat-dot {
+  width:10px; height:10px; border-radius:50%; display:inline-block;
+  box-shadow:0 0 6px currentColor;
+}
+.tbl-stat-val { font-weight:800; font-size:15px }
+
 .tbl-card {
-  background: linear-gradient(145deg, var(--c), var(--dk2));
-  border: 1px solid var(--b);
-  border-radius: 16px;
-  padding: 16px;
+  background: var(--dk2);
+  border: 1px solid rgba(255,255,255,.06);
+  border-left: 4px solid var(--tc, rgba(255,255,255,.1));
+  border-radius: 14px;
+  padding: 0;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  min-height: 120px;
+  transition: all 0.25s ease;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   position: relative;
   overflow: hidden;
 }
-.tbl-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 4px;
-  background: var(--tc, var(--b));
+.tbl-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08);
 }
-.tbl-card:hover { 
-  transform: translateY(-4px); 
-  box-shadow: 0 10px 25px rgba(0,0,0,.4);
-  border-color: rgba(255,255,255,0.1);
-}
-.tbl-card-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
-.tbl-icon-wrap {
-  width: 40px; height: 40px; border-radius: 12px;
-  background: rgba(255,255,255,0.03);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; border: 1px solid rgba(255,255,255,0.05);
-}
-.tno-wrap { text-align: right; }
-.tno { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
-.tbl-label { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; display: inline-block; background: rgba(255,255,255,0.05); }
+.tbl-card:active { transform:scale(.97) }
 
-.tbl-card-bottom { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; margin-top: auto; }
-.tbl-time { font-size: 12px; color: var(--t2); display:flex; align-items:center; }
-.tbl-time::before { content: '⏱️'; font-size: 10px; margin-right: 6px; opacity: 0.6; }
-.tbl-amt { font-size: 16px; font-weight: 700; color: var(--tc); margin-top: 2px; text-align: right; }
+.tbl-card-header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 16px 10px;
+}
+.tbl-num {
+  font-size:13px; font-weight:700; color:var(--t2);
+  display:flex; align-items:center; gap:6px;
+}
+.tbl-num-big {
+  font-size:26px; font-weight:800; color:var(--t); line-height:1;
+}
+.tbl-status-badge {
+  font-size:11px; font-weight:700; padding:4px 12px;
+  border-radius:20px; letter-spacing:.3px;
+  background:var(--tc); color:#fff;
+}
 
-.tbl-card.reserved { background: linear-gradient(145deg, rgba(243,156,18,.08), var(--dk2)); }
-.tbl-card.arrived { background: linear-gradient(145deg, rgba(52,152,219,.08), var(--dk2)); }
-.tbl-card.tbl-ordering { background: linear-gradient(145deg, rgba(155,89,182,.08), var(--dk2)); }
-.tbl-card.tbl-new { background: linear-gradient(145deg, rgba(243,156,18,.08), var(--dk2)); }
-.tbl-card.tbl-cook { background: linear-gradient(145deg, rgba(230,126,34,.08), var(--dk2)); }
-.tbl-card.tbl-served { background: linear-gradient(145deg, rgba(52,152,219,.08), var(--dk2)); }
+.tbl-card-body {
+  flex:1; padding:0 16px 8px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.tbl-info-row {
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; color:var(--t2);
+}
+.tbl-info-row i { font-size:11px; opacity:.6 }
+.tbl-progress-wrap {
+  background:rgba(255,255,255,.06); border-radius:3px;
+  height:4px; overflow:hidden; margin-top:2px;
+}
+.tbl-progress-bar {
+  height:100%; border-radius:3px; transition:width .4s ease;
+}
+
+.tbl-card-footer {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 16px; border-top:1px solid rgba(255,255,255,.04);
+  background:rgba(255,255,255,.02);
+}
+.tbl-amt {
+  font-size:18px; font-weight:800; color:var(--p);
+}
+.tbl-items-badge {
+  font-size:11px; color:var(--t2); font-weight:500;
+}
+
+/* Status-specific card glow */
+.tbl-card.st-available { --tc:#2ECC71 }
+.tbl-card.st-available .tbl-card-footer { display:none }
+.tbl-card.st-cooking { --tc:#E67E22; background:linear-gradient(135deg, rgba(230,126,34,.04), var(--dk2)) }
+.tbl-card.st-served { --tc:#3498DB; background:linear-gradient(135deg, rgba(52,152,219,.04), var(--dk2)) }
+.tbl-card.st-ordering { --tc:#9B59B6; background:linear-gradient(135deg, rgba(155,89,182,.04), var(--dk2)) }
+.tbl-card.st-reserved { --tc:#F39C12; background:linear-gradient(135deg, rgba(243,156,18,.04), var(--dk2)) }
+.tbl-card.st-new { --tc:#F39C12 }
 
 /* ══════════════ REPORTS ══════════════ */
 .stat-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; margin-bottom:18px }
@@ -612,16 +656,16 @@ tr:hover td { background:rgba(255,255,255,.02) }
   <div id="page-tables" class="page" style="flex-direction:column">
     <div class="ipage">
       <div class="phdr">
-        <div class="ptitle">🪑 จัดการโต๊ะ</div>
+        <div class="ptitle"><i class="bi bi-grid-3x3-gap-fill" style="color:var(--p);margin-right:6px"></i> จัดการโต๊ะ</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <div style="display:flex;gap:12px;font-size:11px;color:var(--t2)">
-            <span>🟢 ว่าง <span id="tbl-avail">0</span></span>
-            <span>🟡 สั่งแล้ว <span id="tbl-busy">0</span></span>
-            <span>🔴 ไม่ว่าง <span id="tbl-occ">0</span></span>
-          </div>
-          <button class="btn-s" onclick="loadTables()">🔄 รีเฟรช</button>
-          <button class="btn-p" onclick="openReserveModal()">+ จองโต๊ะ</button>
+          <button class="btn-s" onclick="loadTables()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+          <button class="btn-p" onclick="openReserveModal()"><i class="bi bi-plus-lg"></i> จองโต๊ะ</button>
         </div>
+      </div>
+      <div class="tbl-stats" id="tbl-stats">
+        <div class="tbl-stat-pill"><span class="tbl-stat-dot" style="color:#2ECC71"></span> ว่าง <span class="tbl-stat-val" id="tbl-avail">0</span></div>
+        <div class="tbl-stat-pill"><span class="tbl-stat-dot" style="color:#E67E22"></span> กำลังทำ <span class="tbl-stat-val" id="tbl-busy">0</span></div>
+        <div class="tbl-stat-pill"><span class="tbl-stat-dot" style="color:#3498DB"></span> เสิร์ฟแล้ว <span class="tbl-stat-val" id="tbl-occ">0</span></div>
       </div>
       <div class="tbl-grid" id="tbl-grid"></div>
     </div>
@@ -1205,58 +1249,65 @@ tr:hover td { background:rgba(255,255,255,.02) }
         var selTbl = document.getElementById('table-sel').value;
         var hasCart = cart.length > 0;
         g.innerHTML = _tblCache.map(function (t, idx) {
-          var cls, icon, label, color;
+          var cls, label, color;
           if (t.status === 'available' && hasCart && String(t.no) === String(selTbl)) {
-            cls = 'tbl-ordering'; icon = '📝'; label = 'กำลังสั่ง'; color = '#9B59B6'; busy++
+            cls = 'st-ordering'; label = 'กำลังสั่ง'; color = '#9B59B6'; busy++
           }
-          else if (t.status === 'available') { cls = 'avail'; icon = '🪑'; label = 'ว่าง'; color = '#2ECC71'; avail++ }
-          else if (t.status === 'reserved') { cls = 'reserved'; icon = '📌'; label = 'จองแล้ว'; color = '#F39C12'; busy++ }
-          else if (t.status === 'arrived') { cls = 'arrived'; icon = '👥'; label = 'ลูกค้ามาแล้ว'; color = '#3498DB'; occ++ }
-          else if (t.status === 'seated') { cls = 'arrived'; icon = '🪑'; label = 'ลูกค้านั่งแล้ว'; color = '#3498DB'; occ++ }
-          else if (t.status === 'new') { cls = 'tbl-new'; icon = '🆕'; label = 'รอทำ'; color = '#F39C12'; busy++ }
-          else if (t.status === 'cooking') { cls = 'tbl-cook'; icon = '🔥'; label = 'กำลังทำ'; color = '#E67E22'; occ++ }
-          else if (t.status === 'served') { cls = 'tbl-served'; icon = '✅'; label = 'เสิร์ฟแล้ว'; color = '#3498DB'; occ++ }
-          else { cls = 'avail'; icon = '🪑'; label = 'ว่าง'; color = '#2ECC71'; avail++ }
-          var time = t.time ? '<div class="tbl-time">' + t.time + '</div>' : '';
-          // Show served/total items progress
-          var items = '';
+          else if (t.status === 'available') { cls = 'st-available'; label = 'ว่าง'; color = '#2ECC71'; avail++ }
+          else if (t.status === 'reserved') { cls = 'st-reserved'; label = 'จองแล้ว'; color = '#F39C12'; busy++ }
+          else if (t.status === 'arrived' || t.status === 'seated') { cls = 'st-cooking'; label = 'ลูกค้านั่งแล้ว'; color = '#3498DB'; occ++ }
+          else if (t.status === 'new') { cls = 'st-new'; label = 'รอทำ'; color = '#F39C12'; busy++ }
+          else if (t.status === 'cooking') { cls = 'st-cooking'; label = 'กำลังทำ'; color = '#E67E22'; occ++ }
+          else if (t.status === 'served') { cls = 'st-served'; label = 'เสิร์ฟแล้ว'; color = '#3498DB'; occ++ }
+          else { cls = 'st-available'; label = 'ว่าง'; color = '#2ECC71'; avail++ }
+
+          // Body content
+          var bodyHtml = '';
+          if (t.time) {
+            bodyHtml += '<div class="tbl-info-row"><i class="bi bi-clock"></i> ' + t.time + '</div>';
+          }
           if (t.itemCount) {
             var served = t.servedCount || 0;
             var total = t.totalItems || t.itemCount;
             var pct = total > 0 ? Math.round(served / total * 100) : 0;
             var pColor = pct === 100 ? '#2ECC71' : pct > 0 ? '#F39C12' : '#E74C3C';
-            items = '<div class="tbl-items" style="font-size:11px">' +
-              '<span style="color:' + pColor + ';font-weight:600">' + served + '/' + total + '</span> เสิร์ฟ' +
-              '<div style="background:rgba(255,255,255,0.1);border-radius:3px;height:4px;margin-top:3px;overflow:hidden">' +
-              '<div style="background:' + pColor + ';height:100%;width:' + pct + '%;border-radius:3px;transition:width .3s"></div></div></div>';
+            bodyHtml += '<div class="tbl-info-row"><i class="bi bi-check2-circle"></i> <span style="color:' + pColor + ';font-weight:600">' + served + '/' + total + '</span> เสิร์ฟ</div>' +
+              '<div class="tbl-progress-wrap"><div class="tbl-progress-bar" style="background:' + pColor + ';width:' + pct + '%"></div></div>';
           }
-          var amt = t.total ? '<div class="tbl-amt">฿' + t.total + '</div>' : '';
-          if (cls === 'tbl-ordering') {
-            items = '<div class="tbl-items">' + cart.length + ' รายการ</div>';
-            var cartTotal = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
-            amt = '<div class="tbl-amt">฿' + cartTotal + '</div>';
+          if (cls === 'st-ordering') {
+            bodyHtml = '<div class="tbl-info-row"><i class="bi bi-pencil-square"></i> ' + cart.length + ' รายการในตะกร้า</div>';
           }
-          // Notification badge on table card
+
+          // Footer
+          var footerHtml = '';
+          var amt = t.total || 0;
+          if (cls === 'st-ordering') {
+            amt = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
+          }
+          if (amt > 0) {
+            footerHtml = '<div class="tbl-card-footer">' +
+              '<div class="tbl-items-badge">' + (t.itemCount || cart.length || 0) + ' รายการ</div>' +
+              '<div class="tbl-amt">฿' + amt.toLocaleString() + '</div></div>';
+          }
+
+          // Notification badge
           var notifBadge = '';
           var tblNotif = _tblNotifs[String(t.no)];
           if (tblNotif) {
             var nIcon = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? '💰' : '🔔';
             var nColor = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? '#27AE60' : '#E74C3C';
-            var nText = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? 'ขอเก็บเงิน' : 'เรียกพนักงาน';
-            notifBadge = '<div onclick="event.stopPropagation();clearTblNotif(' + t.no + ')" style="position:absolute;top:-6px;right:-6px;background:' + nColor + ';color:#fff;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;animation:pulse 1s infinite;box-shadow:0 2px 8px ' + nColor + '80;z-index:2">' + nIcon + ' ' + nText + '</div>';
+            var nText = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? 'เก็บเงิน' : 'เรียก';
+            notifBadge = '<div onclick="event.stopPropagation();clearTblNotif(' + t.no + ')" style="position:absolute;top:8px;right:8px;background:' + nColor + ';color:#fff;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;animation:pulse 1s infinite;box-shadow:0 2px 8px ' + nColor + '80;z-index:2">' + nIcon + ' ' + nText + '</div>';
           }
-          return '<div class="tbl-card ' + cls + '" style="--tc:' + color + '" onclick="tblClick(' + idx + ')">' +
+
+          return '<div class="tbl-card ' + cls + '" onclick="tblClick(' + idx + ')">' +
             notifBadge +
-            '<div class="tbl-card-top">' +
-              '<div class="tbl-icon-wrap" style="color:' + color + '; border-color:' + color + '40">' + icon + '</div>' +
-              '<div class="tno-wrap">' +
-                '<div class="tno">' + t.no + '</div>' +
-                '<div class="tbl-label" style="color:' + color + '; background:' + color + '15">' + label + '</div>' +
-              '</div>' +
+            '<div class="tbl-card-header">' +
+              '<div class="tbl-num"><span class="tbl-num-big">' + t.no + '</span></div>' +
+              '<div class="tbl-status-badge" style="background:' + color + '">' + label + '</div>' +
             '</div>' +
-            '<div class="tbl-card-bottom">' +
-              time + items + amt +
-            '</div>' +
+            '<div class="tbl-card-body">' + bodyHtml + '</div>' +
+            footerHtml +
           '</div>';
         }).join('');
         document.getElementById('tbl-avail').textContent = avail;
