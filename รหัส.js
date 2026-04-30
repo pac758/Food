@@ -523,15 +523,9 @@ function updateOrderStatus(orderId, status, tableNo) {
               iSh.getRange(j + 1, 10).setValue('cooking');
             }
           }
-        } else if (status === 'served') {
-          var iSh2 = getSheet_(SHEET_ITEMS);
-          var iData2 = iSh2.getDataRange().getValues();
-          for (var j2 = 1; j2 < iData2.length; j2++) {
-            if (String(iData2[j2][0]).trim() === oid && String(iData2[j2][9]) !== 'served') {
-              iSh2.getRange(j2 + 1, 10).setValue('served');
-            }
-          }
-        } else if (status === 'completed') {
+          // Note: 'served' status no longer auto-marks all items.
+          // Items are served individually via toggleItemStatus buttons.
+          } else if (status === 'completed') {
           var tblStr = tbl || String(data[i][3]).trim().replace(/['\"]/g, '');
           try {
             var nSh = getSheet_('Notifications');
