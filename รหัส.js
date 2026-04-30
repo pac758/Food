@@ -221,10 +221,16 @@ function getStaffList() {
 
 // ── Settings ─────────────────────────────────────────────────
 function getSettings() {
-  const sh = getSheet_(SHEET_SETTINGS);
-  const data = sh.getDataRange().getValues();
-  const s = {};
-  data.slice(1).forEach(r => { s[r[0]] = r[1]; });
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('app_settings');
+  if (cached) {
+    try { return JSON.parse(cached); } catch(e) { /* fall through */ }
+  }
+  var sh = getSheet_(SHEET_SETTINGS);
+  var data = sh.getDataRange().getValues();
+  var s = {};
+  for (var i = 1; i < data.length; i++) { s[data[i][0]] = data[i][1]; }
+  try { cache.put('app_settings', JSON.stringify(s), 300); } catch(e) { /* cache full */ }
   return s;
 }
 
@@ -325,50 +331,81 @@ function deleteProduct(id) {
 }
 
 function updateStock(id, delta) {
-  const sh = getSheet_(SHEET_PRODUCTS);
-  const rows = sh.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) {
-      const ns = Math.max(0, Number(rows[i][4]) + delta);
-      sh.getRange(i + 1, 5).setValue(ns);
-      return ns;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = getSheet_(SHEET_PRODUCTS);
+    var rows = sh.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if (rows[i][0] === id) {
+        var current = Number(rows[i][4]) || 0;
+        if (delta < 0 && current + delta < 0) {
+          return { error: 'stock_insufficient', current: current };
+        }
+        var ns = Math.max(0, current + delta);
+        sh.getRange(i + 1, 5).setValue(ns);
+        SpreadsheetApp.flush();
+        return ns;
+      }
     }
+  } finally {
+    lock.releaseLock();
   }
 }
 
 // ── Orders ───────────────────────────────────────────────────
 function generateOrderId_() {
-  const sh = getSheet_(SHEET_SETTINGS);
-  const data = sh.getDataRange().getValues();
-  let num = 0, row = -1;
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === 'last_order_num') { num = Number(data[i][1]) || 0; row = i + 1; break; }
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = getSheet_(SHEET_SETTINGS);
+    var data = sh.getDataRange().getValues();
+    var num = 0, row = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === 'last_order_num') { num = Number(data[i][1]) || 0; row = i + 1; break; }
+    }
+    num++;
+    if (row > 0) {
+      sh.getRange(row, 2).setValue(num);
+    } else {
+      sh.appendRow(['last_order_num', num]);
+    }
+    SpreadsheetApp.flush();
+    var d = new Date();
+    var prefix = Utilities.formatDate(d, 'Asia/Bangkok', 'yyyyMMdd');
+    return 'ORD-' + prefix + '-' + String(num).padStart(4, '0');
+  } finally {
+    lock.releaseLock();
   }
-  num++;
-  if (row > 0) {
-    sh.getRange(row, 2).setValue(num);
-  } else {
-    // Create the setting if it doesn't exist
-    sh.appendRow(['last_order_num', num]);
-  }
-  SpreadsheetApp.flush();
-  const d = new Date();
-  const prefix = Utilities.formatDate(d, 'Asia/Bangkok', 'yyyyMMdd');
-  return 'ORD-' + prefix + '-' + String(num).padStart(4, '0');
 }
 
 function saveOrder(orderData) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(15000);
   try {
-    const orderId = generateOrderId_();
-    const now = new Date();
-    const date = Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd');
-    const time = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm:ss');
+    var orderId = generateOrderId_();
+    var now = new Date();
+    var date = Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd');
+    var time = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm:ss');
+    var orderStatus = orderData.initialStatus || 'cooking';
+    var itemStatus = orderStatus === 'completed' ? 'served' : 'cooking';
 
-    // Use explicit status from client — no guessing from payment
-    const orderStatus = orderData.initialStatus || 'cooking';
-    const itemStatus = orderStatus === 'completed' ? 'served' : 'cooking';
+    // --- Pre-validate stock ---
+    var pSh = getSheet_(SHEET_PRODUCTS);
+    var pData = pSh.getDataRange().getValues();
+    var stockMap = {};
+    for (var p = 1; p < pData.length; p++) {
+      stockMap[String(pData[p][0])] = { row: p + 1, stock: Number(pData[p][4]) || 0 };
+    }
+    for (var v = 0; v < orderData.items.length; v++) {
+      var si = stockMap[String(orderData.items[v].id)];
+      if (si && si.stock < orderData.items[v].qty) {
+        return { success: false, message: 'สินค้า ' + orderData.items[v].name + ' เหลือ ' + si.stock + ' ไม่พอ' };
+      }
+    }
 
-    const oSh = getSheet_(SHEET_ORDERS);
+    // --- Write order (single appendRow) ---
+    var oSh = getSheet_(SHEET_ORDERS);
     oSh.appendRow([
       orderId, date, time,
       orderData.tableNo || '-',
@@ -383,67 +420,129 @@ function saveOrder(orderData) {
       orderStatus,
       orderData.customerCount || 1
     ]);
-    // Force orderId cell to text format to prevent Sheets auto-conversion
     oSh.getRange(oSh.getLastRow(), 1).setNumberFormat('@');
 
-    const iSh = getSheet_(SHEET_ITEMS);
-    orderData.items.forEach(item => {
-      iSh.appendRow([
+    // --- Batch write items (single setValues) ---
+    var iSh = getSheet_(SHEET_ITEMS);
+    var itemRows = [];
+    for (var j = 0; j < orderData.items.length; j++) {
+      var item = orderData.items[j];
+      itemRows.push([
         orderId, item.id, item.name, item.qty,
         item.price, item.qty * item.price,
         item.spice || '', item.options || '', item.note || '', itemStatus
       ]);
-      iSh.getRange(iSh.getLastRow(), 1).setNumberFormat('@');
-      updateStock(item.id, -item.qty);
-    });
+    }
+    if (itemRows.length > 0) {
+      var startRow = iSh.getLastRow() + 1;
+      iSh.getRange(startRow, 1, itemRows.length, 10).setValues(itemRows);
+      // Set orderId column to text format
+      iSh.getRange(startRow, 1, itemRows.length, 1).setNumberFormat('@');
+    }
+
+    // --- Batch update stock ---
+    for (var k = 0; k < orderData.items.length; k++) {
+      var sk = stockMap[String(orderData.items[k].id)];
+      if (sk) {
+        var ns = Math.max(0, sk.stock - orderData.items[k].qty);
+        pSh.getRange(sk.row, 5).setValue(ns);
+      }
+    }
 
     SpreadsheetApp.flush();
 
-    const settings = getSettings();
+    var settings = getSettings();
     return {
-      success: true, orderId,
+      success: true, orderId: orderId,
       shopName: settings.shop_name || 'ลาบบ้านสวน',
       shopPhone: settings.shop_phone || '',
-      date, time
+      date: date, time: time
     };
   } catch (e) {
     return { success: false, message: e.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
 function updateOrderStatus(orderId, status, tableNo) {
-  const sh = getSheet_(SHEET_ORDERS);
-  const data = sh.getDataRange().getValues();
-  const oid = String(orderId).trim();
-  const tbl = tableNo ? String(tableNo).trim() : '';
-  for (let i = data.length - 1; i >= 1; i--) {
-    var matchId = String(data[i][0]).trim() === oid;
-    var matchTbl = !tbl || String(data[i][3]).trim().replace(/['"]/g, '') === tbl;
-    if (matchId && matchTbl) {
-      var oldStatus = String(data[i][12]);
-      sh.getRange(i + 1, 13).setValue(status);
-      SpreadsheetApp.flush();
-      return { success: true, oldStatus: oldStatus, newStatus: status, row: i + 1, table: String(data[i][3]) };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = getSheet_(SHEET_ORDERS);
+    var data = sh.getDataRange().getValues();
+    var oid = String(orderId).trim();
+    var tbl = tableNo ? String(tableNo).trim() : '';
+    for (var i = data.length - 1; i >= 1; i--) {
+      var matchId = String(data[i][0]).trim() === oid;
+      var matchTbl = !tbl || String(data[i][3]).trim().replace(/['\"]/g, '') === tbl;
+      if (matchId && matchTbl) {
+        var oldStatus = String(data[i][12]);
+        sh.getRange(i + 1, 13).setValue(status);
+
+        if (status === 'cooking') {
+          var iSh = getSheet_(SHEET_ITEMS);
+          var iData = iSh.getDataRange().getValues();
+          for (var j = 1; j < iData.length; j++) {
+            if (String(iData[j][0]).trim() === oid) {
+              iSh.getRange(j + 1, 10).setValue('cooking');
+            }
+          }
+        } else if (status === 'served') {
+          var iSh2 = getSheet_(SHEET_ITEMS);
+          var iData2 = iSh2.getDataRange().getValues();
+          for (var j2 = 1; j2 < iData2.length; j2++) {
+            if (String(iData2[j2][0]).trim() === oid && String(iData2[j2][9]) !== 'served') {
+              iSh2.getRange(j2 + 1, 10).setValue('served');
+            }
+          }
+        } else if (status === 'completed') {
+          var tblStr = tbl || String(data[i][3]).trim().replace(/['\"]/g, '');
+          try {
+            var nSh = getSheet_('Notifications');
+            var nData = nSh.getDataRange().getValues();
+            for (var k = nData.length - 1; k >= 1; k--) {
+              if (String(nData[k][2]).trim() === tblStr && String(nData[k][4]) !== 'done') {
+                nSh.getRange(k + 1, 5).setValue('done');
+              }
+            }
+          } catch (ne) { /* Notifications sheet may not exist */ }
+        }
+
+        SpreadsheetApp.flush();
+        return { success: true, oldStatus: oldStatus, newStatus: status, row: i + 1, table: String(data[i][3]) };
+      }
     }
+    return { success: false, message: 'ไม่พบ Order: ' + oid + ' table: ' + tbl };
+  } finally {
+    lock.releaseLock();
   }
-  return { success: false, message: 'ไม่พบ Order: ' + oid + ' table: ' + tbl };
 }
 
 function cancelOrder(orderId, reason) {
-  const sh = getSheet_(SHEET_ORDERS);
-  const data = sh.getDataRange().getValues();
-  const oid = String(orderId).trim();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === oid) {
-      sh.getRange(i + 1, 13).setValue('cancelled');
-      const note = data[i][10] ? data[i][10] + ' | ยกเลิก: ' + reason : 'ยกเลิก: ' + reason;
-      sh.getRange(i + 1, 11).setValue(note);
-      const items = getOrderItems_(orderId);
-      items.forEach(item => updateStock(item.product_id, item.qty));
-      return { success: true };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = getSheet_(SHEET_ORDERS);
+    var data = sh.getDataRange().getValues();
+    var oid = String(orderId).trim();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === oid) {
+        sh.getRange(i + 1, 13).setValue('cancelled');
+        var note = data[i][10] ? data[i][10] + ' | ยกเลิก: ' + reason : 'ยกเลิก: ' + reason;
+        sh.getRange(i + 1, 11).setValue(note);
+        var items = getOrderItems_(orderId);
+        for (var x = 0; x < items.length; x++) {
+          updateStock(items[x].product_id, items[x].qty);
+        }
+        SpreadsheetApp.flush();
+        return { success: true };
+      }
     }
+    return { success: false };
+  } finally {
+    lock.releaseLock();
   }
-  return { success: false };
 }
 
 function getOrderItems_(orderId) {
@@ -558,24 +657,11 @@ function getOrderTracking(orderId) {
     var order = null;
     for (var i = oData.length - 1; i >= 1; i--) {
       if (String(oData[i][0]).trim() === oid) {
-        order = {
-          orderId: String(oData[i][0]),
-          date: String(oData[i][1]),
-          time: String(oData[i][2]),
-          tableNo: String(oData[i][3]),
-          status: String(oData[i][12] || 'new'),
-          total: Number(oData[i][8])
-        };
+        order = { orderId: String(oData[i][0]), date: String(oData[i][1]), time: String(oData[i][2]), tableNo: String(oData[i][3]), status: String(oData[i][12] || 'new'), total: Number(oData[i][8]) };
         break;
       }
     }
-    if (!order) {
-      var dbg = [];
-      for (var k = Math.max(1, oData.length - 5); k < oData.length; k++) {
-        dbg.push('r' + (k + 1) + ':[' + String(oData[k][0]).substring(0, 25) + ']t=' + typeof oData[k][0]);
-      }
-      return { success: false, message: 'ID_SEARCH:[' + oid + '] rows=' + oData.length + ' | ' + dbg.join(' | ') };
-    }
+    if (!order) return { success: false, message: 'ไม่พบออเดอร์' };
     var items = getOrderItems_(String(order.orderId));
     var mapped = [];
     for (var m = 0; m < items.length; m++) {
@@ -585,7 +671,7 @@ function getOrderTracking(orderId) {
     for (var n = 0; n < mapped.length; n++) { if (mapped[n].item_status === 'served') sc++; }
     return { success: true, order: order, items: mapped, allServed: mapped.length > 0 && sc === mapped.length, servedCount: sc };
   } catch (e) {
-    return { success: false, message: 'TRACK_ERR:' + String(e) };
+    return { success: false, message: String(e) };
   }
 }
 
@@ -596,20 +682,16 @@ function getOrderTrackingByTable(tableNo) {
     var tbl = tableNo ? String(tableNo).trim() : '';
     var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
     var order = null;
-    var dbg = [];
     for (var j = oData.length - 1; j >= 1; j--) {
       var rowTbl = String(oData[j][3]).trim().replace(/['"]/g, '');
       var rowSt = String(oData[j][12] || '').trim();
       var rowDt = oData[j][1] instanceof Date ? Utilities.formatDate(oData[j][1], 'Asia/Bangkok', 'yyyy-MM-dd') : String(oData[j][1]).trim();
-      if (rowTbl == tbl && rowDt === today && dbg.length < 5) {
-        dbg.push('r' + (j + 1) + ':[' + String(oData[j][0]).substring(0, 25) + ']st=' + rowSt);
-      }
       if (rowTbl == tbl && rowDt === today && ['new', 'cooking', 'served', 'completed'].indexOf(rowSt) !== -1) {
         order = { orderId: String(oData[j][0]), date: rowDt, time: String(oData[j][2]), tableNo: String(oData[j][3]), status: rowSt, total: Number(oData[j][8]) };
         break;
       }
     }
-    if (!order) return { success: false, message: 'TBL_SEARCH:[' + tbl + ']today=' + today + '|rows=' + oData.length + '|' + dbg.join('|') };
+    if (!order) return { success: false, message: 'ไม่พบออเดอร์สำหรับโต๊ะนี้' };
     var items = getOrderItems_(String(order.orderId));
     var mapped = [];
     for (var m = 0; m < items.length; m++) {
@@ -619,7 +701,7 @@ function getOrderTrackingByTable(tableNo) {
     for (var n = 0; n < mapped.length; n++) { if (mapped[n].item_status === 'served') sc++; }
     return { success: true, order: order, items: mapped, allServed: mapped.length > 0 && sc === mapped.length, servedCount: sc };
   } catch (e) {
-    return { success: false, message: 'TBL_ERR:' + String(e) };
+    return { success: false, message: String(e) };
   }
 }
 
