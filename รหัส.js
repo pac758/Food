@@ -817,26 +817,28 @@ function getOrderHistory(days) {
   cutoff.setDate(cutoff.getDate() - (days || 7));
   const cutoffStr = Utilities.formatDate(cutoff, 'Asia/Bangkok', 'yyyy-MM-dd');
 
-  return data.slice(1)
-    .filter(r => {
-      var rowDate = r[1];
-      if (rowDate instanceof Date) {
-        rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
-      } else {
-        rowDate = String(rowDate).trim();
-      }
-      r._fmtDate = rowDate; // store for map
-      return rowDate >= cutoffStr;
-    })
-    .map(r => ({
-      orderId: r[0], date: r._fmtDate, time: r[2],
-      tableNo: r[3], orderType: r[4],
-      total: Number(r[5]), discount: Number(r[6]),
-      discountType: r[7], grandTotal: Number(r[8]),
-      payment: r[9], note: r[10], cashier: r[11],
-      status: r[12], customerCount: Number(r[13])
-    }))
-    .reverse();
+  var results = [];
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    var rowDate = r[1];
+    if (rowDate instanceof Date) {
+      rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+    } else {
+      rowDate = String(rowDate).trim();
+    }
+    if (rowDate >= cutoffStr) {
+      results.push({
+        orderId: String(r[0]), date: rowDate, time: String(r[2]),
+        tableNo: String(r[3]), orderType: String(r[4]),
+        total: Number(r[5]) || 0, discount: Number(r[6]) || 0,
+        discountType: String(r[7] || ''), grandTotal: Number(r[8]) || 0,
+        payment: String(r[9] || ''), note: String(r[10] || ''), cashier: String(r[11] || ''),
+        status: String(r[12] || ''), customerCount: Number(r[13]) || 1
+      });
+    }
+  }
+  results.reverse();
+  return results;
 }
 
 function getOrderDetail(orderId) {
