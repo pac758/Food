@@ -1699,8 +1699,8 @@ tr:hover td { background:rgba(255,255,255,.02) }
     }
 
     // REPORTS
-    function setToday() { var t = new Date().toISOString().split('T')[0]; document.getElementById('rpt-s').value = t; document.getElementById('rpt-e').value = t }
-    function setMonth() { var n = new Date(), s = new Date(n.getFullYear(), n.getMonth(), 1).toISOString().split('T')[0], e = new Date(n.getFullYear(), n.getMonth() + 1, 0).toISOString().split('T')[0]; document.getElementById('rpt-s').value = s; document.getElementById('rpt-e').value = e }
+    function setToday() { var t = new Date().toISOString().split('T')[0]; document.getElementById('rpt-s').value = t; document.getElementById('rpt-e').value = t; loadReport() }
+    function setMonth() { var n = new Date(), s = new Date(n.getFullYear(), n.getMonth(), 1).toISOString().split('T')[0], e = new Date(n.getFullYear(), n.getMonth() + 1, 0).toISOString().split('T')[0]; document.getElementById('rpt-s').value = s; document.getElementById('rpt-e').value = e; loadReport() }
     function loadReport() {
       var s = document.getElementById('rpt-s').value, e = document.getElementById('rpt-e').value;
       if (!s || !e) { Swal.fire({ icon:'warning', title:'เลือกวันที่', confirmButtonColor:'#FF6B35' }); return }
