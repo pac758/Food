@@ -442,12 +442,12 @@ tr:hover td { background:rgba(255,255,255,.02) }
 .tbl-card {
   background: var(--dk2);
   border: 1px solid rgba(255,255,255,.06);
-  border-left: 4px solid var(--tc, rgba(255,255,255,.1));
+  border-left: 5px solid var(--tc, rgba(255,255,255,.1));
   border-radius: 14px;
   padding: 0;
   cursor: pointer;
   transition: all 0.25s ease;
-  min-height: 140px;
+  min-height: 130px;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -461,36 +461,37 @@ tr:hover td { background:rgba(255,255,255,.02) }
 
 .tbl-card-header {
   display:flex; justify-content:space-between; align-items:center;
-  padding:14px 16px 10px;
+  padding:16px 16px 8px;
 }
 .tbl-num {
-  font-size:13px; font-weight:700; color:var(--t2);
-  display:flex; align-items:center; gap:6px;
+  font-size:14px; font-weight:700; color:var(--t2);
+  display:flex; align-items:baseline; gap:4px;
 }
+.tbl-num::before { content:'โต๊ะ'; font-size:13px; font-weight:600; color:var(--t2) }
 .tbl-num-big {
-  font-size:26px; font-weight:800; color:var(--t); line-height:1;
+  font-size:38px; font-weight:800; color:var(--t); line-height:1;
 }
 .tbl-status-badge {
-  font-size:11px; font-weight:700; padding:4px 12px;
+  font-size:13px; font-weight:700; padding:5px 14px;
   border-radius:20px; letter-spacing:.3px;
   background:var(--tc); color:#fff;
 }
 
 .tbl-card-body {
-  flex:1; padding:0 16px 8px;
-  display:flex; flex-direction:column; gap:4px;
+  flex:1; padding:4px 16px 8px;
+  display:flex; flex-direction:column; gap:5px;
 }
 .tbl-info-row {
   display:flex; align-items:center; gap:6px;
-  font-size:12px; color:var(--t2);
+  font-size:13px; color:var(--t2);
 }
-.tbl-info-row i { font-size:11px; opacity:.6 }
+.tbl-info-row i { font-size:12px; opacity:.6 }
 .tbl-progress-wrap {
-  background:rgba(255,255,255,.06); border-radius:3px;
-  height:4px; overflow:hidden; margin-top:2px;
+  background:rgba(255,255,255,.06); border-radius:4px;
+  height:5px; overflow:hidden; margin-top:2px;
 }
 .tbl-progress-bar {
-  height:100%; border-radius:3px; transition:width .4s ease;
+  height:100%; border-radius:4px; transition:width .4s ease;
 }
 
 .tbl-card-footer {
@@ -499,14 +500,15 @@ tr:hover td { background:rgba(255,255,255,.02) }
   background:rgba(255,255,255,.02);
 }
 .tbl-amt {
-  font-size:18px; font-weight:800; color:var(--p);
+  font-size:20px; font-weight:800; color:var(--p);
 }
 .tbl-items-badge {
-  font-size:11px; color:var(--t2); font-weight:500;
+  font-size:12px; color:var(--t2); font-weight:500;
 }
 
 /* Status-specific card glow */
 .tbl-card.st-available { --tc:#2ECC71 }
+.tbl-card.st-available .tbl-card-body { display:flex; align-items:center; justify-content:center }
 .tbl-card.st-available .tbl-card-footer { display:none }
 .tbl-card.st-cooking { --tc:#E67E22; background:linear-gradient(135deg, rgba(230,126,34,.04), var(--dk2)) }
 .tbl-card.st-served { --tc:#3498DB; background:linear-gradient(135deg, rgba(52,152,219,.04), var(--dk2)) }
@@ -1584,8 +1586,8 @@ tr:hover td { background:rgba(255,255,255,.02) }
           if (tblNotif) {
             var nIcon = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? '💰' : '🔔';
             var nColor = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? '#27AE60' : '#E74C3C';
-            var nText = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? 'เก็บเงิน' : 'เรียก';
-            notifBadge = '<div onclick="event.stopPropagation();clearTblNotif(' + t.no + ')" style="position:absolute;top:8px;right:8px;background:' + nColor + ';color:#fff;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;animation:pulse 1s infinite;box-shadow:0 2px 8px ' + nColor + '80;z-index:2">' + nIcon + ' ' + nText + '</div>';
+            var nText = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? 'เก็บเงิน' : 'เรียกพนักงาน';
+            notifBadge = '<div onclick="event.stopPropagation();clearTblNotif(' + t.no + ')" style="position:absolute;top:10px;right:10px;background:' + nColor + ';color:#fff;border-radius:24px;padding:6px 16px;font-size:15px;font-weight:700;cursor:pointer;animation:pulse 1s infinite;box-shadow:0 3px 12px ' + nColor + '90;z-index:2;letter-spacing:.3px">' + nIcon + ' ' + nText + '</div>';
           }
 
           return '<div class="tbl-card ' + cls + '" onclick="tblClick(' + idx + ')">' +
