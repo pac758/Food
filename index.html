@@ -821,9 +821,9 @@ tr:hover td { background:rgba(255,255,255,.02) }
           <span style="color:var(--t2);font-size:12px">ถึง</span>
           <input type="date" id="rpt-e" class="fg"
             style="width:auto;padding:6px 8px;background:var(--c);border:1px solid var(--b);border-radius:6px;color:var(--t);font-size:12px">
-          <button class="btn-p" onclick="loadReport()">ดูรายงาน</button>
-          <button class="btn-s" onclick="setToday()">วันนี้</button>
-          <button class="btn-s" onclick="setMonth()">เดือนนี้</button>
+          <button class="btn-p" id="btn-rpt-load" onclick="loadReport('btn-rpt-load')">ดูรายงาน</button>
+          <button class="btn-s" id="btn-rpt-today" onclick="setToday()">วันนี้</button>
+          <button class="btn-s" id="btn-rpt-month" onclick="setMonth()">เดือนนี้</button>
         </div>
       </div>
       <div class="stat-cards" id="rpt-stats"></div>
@@ -1699,10 +1699,17 @@ tr:hover td { background:rgba(255,255,255,.02) }
     }
 
     // REPORTS
+    function setRptBtnActive(id) {
+      document.getElementById('btn-rpt-load').className = 'btn-s';
+      document.getElementById('btn-rpt-today').className = 'btn-s';
+      document.getElementById('btn-rpt-month').className = 'btn-s';
+      if(id) document.getElementById(id).className = 'btn-p';
+    }
     function localDateStr(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') }
-    function setToday() { var t = localDateStr(new Date()); document.getElementById('rpt-s').value = t; document.getElementById('rpt-e').value = t; loadReport() }
-    function setMonth() { var n = new Date(); var s = localDateStr(new Date(n.getFullYear(), n.getMonth(), 1)); var e = localDateStr(new Date(n.getFullYear(), n.getMonth() + 1, 0)); document.getElementById('rpt-s').value = s; document.getElementById('rpt-e').value = e; loadReport() }
-    function loadReport() {
+    function setToday() { setRptBtnActive('btn-rpt-today'); var t = localDateStr(new Date()); document.getElementById('rpt-s').value = t; document.getElementById('rpt-e').value = t; loadReport(null, true) }
+    function setMonth() { setRptBtnActive('btn-rpt-month'); var n = new Date(); var s = localDateStr(new Date(n.getFullYear(), n.getMonth(), 1)); var e = localDateStr(new Date(n.getFullYear(), n.getMonth() + 1, 0)); document.getElementById('rpt-s').value = s; document.getElementById('rpt-e').value = e; loadReport(null, true) }
+    function loadReport(btnId, skipBtnUpdate) {
+      if (!skipBtnUpdate) setRptBtnActive('btn-rpt-load');
       var s = document.getElementById('rpt-s').value, e = document.getElementById('rpt-e').value;
       if (!s || !e) { Swal.fire({ icon:'warning', title:'เลือกวันที่', confirmButtonColor:'#FF6B35' }); return }
       Swal.fire({ title:'กำลังโหลดรายงาน...', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
