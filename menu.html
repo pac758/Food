@@ -463,7 +463,25 @@ function submitOrder() {
     .saveOrder(orderData);
 }
 
-function orderAgain() { document.getElementById('success-page').classList.remove('show'); if (_trackInterval) clearInterval(_trackInterval) }
+function orderAgain() {
+  // Stop tracking
+  if (_trackInterval) { clearInterval(_trackInterval); _trackInterval = null; }
+  _currentOrderId = null;
+  // Reset tracking UI
+  document.getElementById('track-icon').textContent = '🍳';
+  document.getElementById('track-title').textContent = 'กำลังเตรียมอาหาร';
+  document.getElementById('track-sub').textContent = 'ออเดอร์กำลังถูกจัดเตรียม กรุณารอสักครู่';
+  document.getElementById('track-progress-bar').style.width = '0%';
+  document.getElementById('track-progress-text').textContent = '0/0 เสร็จ';
+  document.getElementById('track-status-text').textContent = 'รอทำ';
+  document.getElementById('track-items').innerHTML = '';
+  // Clear cart
+  cart = []; updateCartUI();
+  // Go back to menu
+  document.getElementById('success-page').classList.remove('show');
+  // Scroll to top
+  window.scrollTo(0, 0);
+}
 
 var _currentOrderId = null;
 var _trackInterval = null;
@@ -529,6 +547,33 @@ function renderTrackingData(r) {
     // Update order id display
     document.getElementById('success-oid').textContent = '🧾 Order: ' + r.order.orderId + ' | โต๊ะ ' + tableNo;
 
+    // ── Handle PAID / COMPLETED — show thank you & auto-redirect ──
+    if (orderStatus === 'paid' || orderStatus === 'completed') {
+      if (_trackInterval) clearInterval(_trackInterval);
+      document.getElementById('track-icon').textContent = '🎉';
+      document.getElementById('track-title').textContent = 'ขอบคุณที่ใช้บริการ!';
+      document.getElementById('track-sub').textContent = 'ชำระเงินเรียบร้อยแล้ว ขอบคุณครับ/ค่ะ';
+      document.getElementById('track-progress-text').textContent = '✅ เสร็จสิ้น';
+      document.getElementById('track-progress-bar').style.width = '100%';
+      document.getElementById('track-status-text').textContent = '💰 ชำระแล้ว';
+      // Hide call/bill buttons, show only order again
+      document.getElementById('track-items').innerHTML =
+        '<div style="text-align:center;padding:24px">' +
+          '<div style="font-size:48px;margin-bottom:10px">🙏</div>' +
+          '<div style="font-size:16px;color:var(--t2)">ขอบคุณที่มาทานอาหารที่ลาบบ้านสวน</div>' +
+          '<div style="font-size:13px;color:var(--t2);margin-top:8px">หน้าจอจะกลับสู่เมนูใน <span id="countdown-sec">10</span> วินาที</div>' +
+        '</div>';
+      // Countdown & auto-redirect
+      var sec = 10;
+      var cdi = setInterval(function() {
+        sec--;
+        var el = document.getElementById('countdown-sec');
+        if (el) el.textContent = sec;
+        if (sec <= 0) { clearInterval(cdi); orderAgain(); }
+      }, 1000);
+      return;
+    }
+
     // Update header
     if (allDone || orderStatus === 'served') {
       document.getElementById('track-icon').textContent = '✅';
@@ -567,8 +612,6 @@ function renderTrackingData(r) {
     });
     if (!items.length) h = '<div style="text-align:center;color:var(--t2);padding:16px">กำลังโหลดรายการ...</div>';
     document.getElementById('track-items').innerHTML = h;
-
-    if (orderStatus === 'completed') { if (_trackInterval) clearInterval(_trackInterval); }
 }
 
 function callStaffBtn(type) {
