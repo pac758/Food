@@ -1513,3 +1513,84 @@ function testResolveAllUrls() {
   }
   return results.join('\n');
 }
+
+// ── AUTO ARCHIVE — move old completed orders to archive sheets ──
+function autoArchiveOldOrders() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var oSh = getSheet_(SHEET_ORDERS);
+    var iSh = getSheet_(SHEET_ITEMS);
+    
+    // Create archive sheets if not exist
+    var aoSh = ss.getSheetByName('Archive_Orders');
+    if (!aoSh) {
+      aoSh = ss.insertSheet('Archive_Orders');
+      aoSh.appendRow(oSh.getRange(1, 1, 1, oSh.getLastColumn()).getValues()[0]);
+    }
+    var aiSh = ss.getSheetByName('Archive_Items');
+    if (!aiSh) {
+      aiSh = ss.insertSheet('Archive_Items');
+      aiSh.appendRow(iSh.getRange(1, 1, 1, iSh.getLastColumn()).getValues()[0]);
+    }
+    
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    var cutoffStr = Utilities.formatDate(cutoff, 'Asia/Bangkok', 'yyyy-MM-dd');
+    
+    var oData = oSh.getDataRange().getValues();
+    var iData = iSh.getDataRange().getValues();
+    
+    var archiveOids = [];
+    var oRowsToDelete = [];
+    
+    // Find old completed/cancelled orders
+    for (var i = oData.length - 1; i >= 1; i--) {
+      var rowDate = oData[i][1];
+      if (rowDate instanceof Date) {
+        rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+      }
+      rowDate = String(rowDate);
+      var status = String(oData[i][12]);
+      
+      if (rowDate < cutoffStr && ['completed', 'paid', 'cancelled'].indexOf(status) !== -1) {
+        archiveOids.push(String(oData[i][0]));
+        oRowsToDelete.push(i + 1); // 1-indexed for sheet
+      }
+    }
+    
+    if (archiveOids.length === 0) return { archived: 0 };
+    
+    // Move order rows to archive
+    var oHeaders = oSh.getLastColumn();
+    archiveOids.forEach(function(oid) {
+      // Find in original data
+      for (var i = 1; i < oData.length; i++) {
+        if (String(oData[i][0]) === oid) {
+          aoSh.appendRow(oData[i]);
+          break;
+        }
+      }
+    });
+    
+    // Move item rows to archive
+    var iRowsToDelete = [];
+    for (var j = iData.length - 1; j >= 1; j--) {
+      if (archiveOids.indexOf(String(iData[j][0])) !== -1) {
+        aiSh.appendRow(iData[j]);
+        iRowsToDelete.push(j + 1);
+      }
+    }
+    
+    // Delete from main sheets (from bottom up to preserve row indices)
+    oRowsToDelete.sort(function(a,b){return b-a});
+    iRowsToDelete.sort(function(a,b){return b-a});
+    
+    oRowsToDelete.forEach(function(r) { oSh.deleteRow(r); });
+    iRowsToDelete.forEach(function(r) { iSh.deleteRow(r); });
+    
+    SpreadsheetApp.flush();
+    return { archived: archiveOids.length, message: 'Archived ' + archiveOids.length + ' orders' };
+  } catch(e) {
+    return { archived: 0, error: String(e) };
+  }
+}

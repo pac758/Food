@@ -1096,6 +1096,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
             timerProgressBar: true,
             showConfirmButton: false
           }).then(function() {
+            _sessionStart = Date.now();
             loadAll();
           });
         }
@@ -2248,8 +2249,32 @@ tr:hover td { background:rgba(255,255,255,.02) }
       toast('✅ โต๊ะ ' + tableNo + ' — ดำเนินการแล้ว', 'ok');
       loadTables();
     }
-    setInterval(pollNotifications, 8000);
-    setTimeout(pollNotifications, 2000);
+    setInterval(pollNotifications, 30000);
+    setTimeout(pollNotifications, 3000);
+
+    // ── SESSION TIMEOUT (8 ชั่วโมง) ──
+    var _sessionStart = Date.now();
+    var SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
+    setInterval(function() {
+      if (Date.now() - _sessionStart > SESSION_TIMEOUT) {
+        Swal.fire({
+          icon: 'warning',
+          title: '⏰ หมดเวลาใช้งาน',
+          text: 'กรุณา Login ใหม่เพื่อความปลอดภัย',
+          confirmButtonColor: '#FF6B35',
+          allowOutsideClick: false
+        }).then(function() {
+          location.reload();
+        });
+      }
+    }, 60000); // check every 1 min
+
+    // ── AUTO ARCHIVE (เรียกครั้งเดียวตอน login) ──
+    setTimeout(function() {
+      google.script.run.withSuccessHandler(function(r) {
+        if (r && r.archived > 0) console.log('Auto-archived ' + r.archived + ' old orders');
+      }).withFailureHandler(function(){}).autoArchiveOldOrders();
+    }, 10000);
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
