@@ -952,7 +952,13 @@ function getReservations(dateStr) {
   if (data.length <= 1) return [];
   const today = dateStr || Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
   return data.slice(1)
-    .filter(r => String(r[1]) === today && r[8] !== 'cancelled')
+    .filter(function(r) {
+      var rowDate = r[1];
+      if (rowDate instanceof Date) {
+        rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+      }
+      return String(rowDate) === today && String(r[8]) !== 'cancelled' && String(r[8]) !== 'completed';
+    })
     .map(r => ({
       reservationId: r[0], date: r[1], time: r[2], tableNo: r[3],
       customerName: r[4], partySize: Number(r[5]) || 1, contact: r[6],
