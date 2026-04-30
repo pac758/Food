@@ -554,6 +554,47 @@ function updateOrderStatus(orderId, status, tableNo) {
   }
 }
 
+// Complete ALL active orders for a table at once
+function completeTable(tableNo) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+    var sh = getSheet_(SHEET_ORDERS);
+    var data = sh.getDataRange().getValues();
+    var tblStr = String(tableNo).trim();
+    var updated = 0;
+    
+    for (var i = data.length - 1; i >= 1; i--) {
+      var rowDate = data[i][1];
+      if (rowDate instanceof Date) rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+      var rowTbl = String(data[i][3]).trim().replace(/['"]/g, '');
+      var rowStatus = String(data[i][12]);
+      
+      if (String(rowDate) === today && rowTbl === tblStr && ['new', 'cooking', 'served'].indexOf(rowStatus) !== -1) {
+        sh.getRange(i + 1, 13).setValue('completed');
+        updated++;
+      }
+    }
+    
+    // Clear notifications for this table
+    try {
+      var nSh = getSheet_('Notifications');
+      var nData = nSh.getDataRange().getValues();
+      for (var k = nData.length - 1; k >= 1; k--) {
+        if (String(nData[k][2]).trim() === tblStr && String(nData[k][4]) !== 'done') {
+          nSh.getRange(k + 1, 5).setValue('done');
+        }
+      }
+    } catch(ne) {}
+    
+    SpreadsheetApp.flush();
+    return { success: true, updatedOrders: updated, table: tblStr };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function cancelOrder(orderId, reason) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);

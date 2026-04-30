@@ -1695,7 +1695,9 @@ tr:hover td { background:rgba(255,255,255,.02) }
         acts = '';
         if (t.status === 'new') acts += '<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\'' + t.orderId + '\',\'cooking\',' + t.no + ')">🔥 เริ่มทำ</button>';
         if (t.status === 'cooking') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\'' + t.orderId + '\',\'served\',' + t.no + ')">✅ เสิร์ฟ</button>';
-        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="updateTblStatus(\'' + t.orderId + '\',\'completed\',' + t.no + ')">💰 เก็บเงิน/ว่าง</button>';
+        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="completeTableUI(' + t.no + ')">💰 เก็บเงิน/ว่าง</button>';
+        // Always show complete button for multi-order tables regardless of status
+        if (t.orderCount > 1 && t.status !== 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="completeTableUI(' + t.no + ')">💰 เก็บเงิน/ว่าง (ทุก order)</button>';
         acts += '<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
 
       }
@@ -1802,6 +1804,29 @@ tr:hover td { background:rgba(255,255,255,.02) }
         // Revert on error
         toast('❌ บันทึกไม่สำเร็จ กรุณาลองใหม่', 'err');
       }).updateItemStatus(orderId, itemRow, newStatus);
+    }
+
+    // Complete ALL orders for a table
+    function completeTableUI(tblNo) {
+      closeM('tbl-modal');
+      Swal.fire({ title:'กำลังเก็บเงิน...', html:'<div style="color:var(--t2)">ปิดทุก order โต๊ะ ' + tblNo + '</div>', allowOutsideClick:true, didOpen:function(){ Swal.showLoading() } });
+      var safetyTimer = setTimeout(function(){ Swal.close(); Swal.fire({ icon:'warning', title:'ใช้เวลานาน', text:'ลองรีเฟรชหน้า', confirmButtonColor:'#FF6B35' }) }, 10000);
+      google.script.run
+        .withSuccessHandler(function(r) {
+          clearTimeout(safetyTimer);
+          if (r && r.success) {
+            delete _tblNotifs[String(tblNo)];
+            Swal.fire({ icon:'success', title:'💰 เก็บเงินเรียบร้อย', html:'ปิด ' + r.updatedOrders + ' ออร์เดอร์ โต๊ะ ' + tblNo + ' ว่างแล้ว', timer:2000, showConfirmButton:false });
+          } else {
+            Swal.fire({ icon:'error', title:'ไม่สำเร็จ', text:r&&r.message||'', confirmButtonColor:'#FF6B35' });
+          }
+          loadTables();
+        })
+        .withFailureHandler(function(e) {
+          clearTimeout(safetyTimer);
+          Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e&&e.message||String(e), confirmButtonColor:'#FF6B35' });
+        })
+        .completeTable(tblNo);
     }
 
     function updateTblStatus(oid, st, tblNo) {
