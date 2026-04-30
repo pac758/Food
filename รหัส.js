@@ -945,30 +945,54 @@ function getTableStatus() {
         }
         return String(rowDate) === today && String(r[3]).trim().replace(/['"]/g, '') === tableStr && ['new', 'cooking', 'served'].includes(String(r[12]));
       });
-      // Priority: cooking/served orders first (active), then new
-      const activeOrder = todayOrders.filter(r => ['cooking', 'served'].includes(String(r[12]))).pop()
-        || todayOrders.filter(r => String(r[12]) === 'new').pop()
-        || null;
 
-      if (activeOrder) {
-        var orderTime = activeOrder[2];
+      if (todayOrders.length > 0) {
+        // Aggregate all active orders
+        var combinedTotal = 0;
+        var combinedItemCount = 0;
+        var combinedServed = 0;
+        var allOids = [];
+        var latestStatus = 'served'; // will degrade to cooking/new
+        var firstTime = '';
+
+        todayOrders.forEach(function(r) {
+          var oid = String(r[0]);
+          allOids.push(oid);
+          combinedTotal += Number(r[8]) || 0;
+          var info = getItemCounts_(oid);
+          combinedItemCount += info.total;
+          combinedServed += info.served;
+          var st = String(r[12]);
+          // Priority: new > cooking > served (show most urgent status)
+          if (st === 'new') latestStatus = 'new';
+          else if (st === 'cooking' && latestStatus !== 'new') latestStatus = 'cooking';
+        });
+
+        // Use latest order for time display, first for orderId
+        var latestOrder = todayOrders[todayOrders.length - 1];
+        var orderTime = latestOrder[2];
         if (orderTime instanceof Date) {
           orderTime = Utilities.formatDate(orderTime, 'Asia/Bangkok', 'HH:mm');
         } else {
           orderTime = String(orderTime || '');
         }
-        var oid = String(activeOrder[0]);
-        var itemInfo = getItemCounts_(oid);
+        var firstOid = String(todayOrders[0][0]);
+        var firstTime2 = todayOrders[0][2];
+        if (firstTime2 instanceof Date) firstTime2 = Utilities.formatDate(firstTime2, 'Asia/Bangkok', 'HH:mm');
+        else firstTime2 = String(firstTime2 || '');
+
         tables.push({
           no: t,
-          status: String(activeOrder[12]),
-          orderId: oid,
-          orderType: String(activeOrder[4]),
-          total: Number(activeOrder[8]) || 0,
-          time: orderTime,
-          itemCount: itemInfo.total,
-          servedCount: itemInfo.served,
-          totalItems: itemInfo.total
+          status: latestStatus,
+          orderId: firstOid,
+          allOrderIds: allOids,
+          orderCount: todayOrders.length,
+          orderType: String(latestOrder[4]),
+          total: combinedTotal,
+          time: firstTime2,
+          itemCount: combinedItemCount,
+          servedCount: combinedServed,
+          totalItems: combinedItemCount
         });
         continue;
       }
@@ -985,7 +1009,8 @@ function getTableStatus() {
           resNote: String(reservation.note || ''),
           total: 0,
           time: String(reservation.time || ''),
-          itemCount: 0
+          itemCount: 0,
+          orderCount: 0
         });
         continue;
       }
@@ -996,7 +1021,8 @@ function getTableStatus() {
         orderId: '',
         total: 0,
         time: '',
-        itemCount: 0
+        itemCount: 0,
+        orderCount: 0
       });
     }
     return tables;
