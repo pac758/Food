@@ -5,16 +5,16 @@
 // ============================================================
 
 const SHEET_PRODUCTS = 'Products';
-const SHEET_ORDERS   = 'Orders';
-const SHEET_ITEMS    = 'OrderItems';
+const SHEET_ORDERS = 'Orders';
+const SHEET_ITEMS = 'OrderItems';
 const SHEET_SETTINGS = 'Settings';
 const SHEET_RESERVATIONS = 'Reservations';
-const SHEET_STAFF    = 'Staff';
+const SHEET_STAFF = 'Staff';
 
 // ── Entry Point ──────────────────────────────────────────────
 function doGet(e) {
   const page = (e && e.parameter && e.parameter.page) || 'pos';
-  
+
   if (page === 'kitchen') {
     return HtmlService.createTemplateFromFile('kitchen')
       .evaluate()
@@ -22,7 +22,7 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
-  
+
   if (page === 'menu') {
     var tmpl = HtmlService.createTemplateFromFile('menu');
     tmpl.tableNo = (e && e.parameter && e.parameter.table) || '-';
@@ -31,7 +31,7 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
-  
+
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
     .setTitle('POS — ลาบบ้านสวน')
@@ -52,7 +52,7 @@ function getSS_() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (ss) return ss;
-  } catch(e) {}
+  } catch (e) { }
   return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
@@ -79,7 +79,7 @@ function sheetToObjects_(sheetName, headers) {
 function setupSheets() {
   const ss = getSS_();
   const headerStyle = (sh, cols) => {
-    sh.getRange(1,1,1,cols).setFontWeight('bold')
+    sh.getRange(1, 1, 1, cols).setFontWeight('bold')
       .setBackground('#FF6B35').setFontColor('#fff');
     sh.setFrozenRows(1);
   };
@@ -88,46 +88,46 @@ function setupSheets() {
   let p = ss.getSheetByName(SHEET_PRODUCTS);
   if (!p) p = ss.insertSheet(SHEET_PRODUCTS);
   if (!p.getRange('A1').getValue()) {
-    p.appendRow(['id','name','category','price','stock','unit','active',
-                 'emoji','spice_default','options','cost','sort_order']);
+    p.appendRow(['id', 'name', 'category', 'price', 'stock', 'unit', 'active',
+      'emoji', 'spice_default', 'options', 'cost', 'sort_order']);
     headerStyle(p, 12);
 
     const menu = [
       // ─── 🌟 เมนูแนะนำ ───
-      ['M001','ลาบหมูคั่ว','🌟 แนะนำ',80,99,'จาน',true,'🥩','กลาง','เพิ่มไข่มดแดง:20',35,1],
-      ['M002','ต้มแซ่บกระดูกอ่อน','🌟 แนะนำ',90,99,'ชาม',true,'🍲','กลาง','',40,2],
-      ['M003','คอหมูย่าง','🌟 แนะนำ',100,99,'จาน',true,'🔥','','' ,45,3],
+      ['M001', 'ลาบหมูคั่ว', '🌟 แนะนำ', 80, 99, 'จาน', true, '🥩', 'กลาง', 'เพิ่มไข่มดแดง:20', 35, 1],
+      ['M002', 'ต้มแซ่บกระดูกอ่อน', '🌟 แนะนำ', 90, 99, 'ชาม', true, '🍲', 'กลาง', '', 40, 2],
+      ['M003', 'คอหมูย่าง', '🌟 แนะนำ', 100, 99, 'จาน', true, '🔥', '', '', 45, 3],
 
       // ─── ลาบ / น้ำตก ───
-      ['M004','ลาบหมู','ลาบ/น้ำตก',70,99,'จาน',true,'🥩','กลาง','เพิ่มไข่มดแดง:20',30,10],
-      ['M005','ลาบไก่','ลาบ/น้ำตก',70,99,'จาน',true,'🍗','กลาง','เพิ่มไข่มดแดง:20',30,11],
-      ['M006','ลาบเนื้อ','ลาบ/น้ำตก',90,99,'จาน',true,'🥩','กลาง','เพิ่มไข่มดแดง:20',40,12],
-      ['M007','น้ำตกหมู','ลาบ/น้ำตก',80,99,'จาน',true,'🥩','กลาง','',35,13],
-      ['M008','น้ำตกเนื้อ','ลาบ/น้ำตก',100,99,'จาน',true,'🥩','กลาง','',45,14],
+      ['M004', 'ลาบหมู', 'ลาบ/น้ำตก', 70, 99, 'จาน', true, '🥩', 'กลาง', 'เพิ่มไข่มดแดง:20', 30, 10],
+      ['M005', 'ลาบไก่', 'ลาบ/น้ำตก', 70, 99, 'จาน', true, '🍗', 'กลาง', 'เพิ่มไข่มดแดง:20', 30, 11],
+      ['M006', 'ลาบเนื้อ', 'ลาบ/น้ำตก', 90, 99, 'จาน', true, '🥩', 'กลาง', 'เพิ่มไข่มดแดง:20', 40, 12],
+      ['M007', 'น้ำตกหมู', 'ลาบ/น้ำตก', 80, 99, 'จาน', true, '🥩', 'กลาง', '', 35, 13],
+      ['M008', 'น้ำตกเนื้อ', 'ลาบ/น้ำตก', 100, 99, 'จาน', true, '🥩', 'กลาง', '', 45, 14],
 
       // ─── ต้มแซ่บ ───
-      ['M009','ต้มแซ่บไก่บ้าน','ต้มแซ่บ',100,99,'ชาม',true,'🍲','กลาง','',45,20],
-      ['M010','ต้มแซ่บเนื้อ','ต้มแซ่บ',120,99,'ชาม',true,'🍲','กลาง','',55,21],
-      ['M011','อ่อมหมู','ต้มแซ่บ',90,99,'ชาม',true,'🍲','กลาง','',40,22],
-      ['M012','อ่อมเนื้อ','ต้มแซ่บ',90,99,'ชาม',true,'🍲','กลาง','',40,23],
+      ['M009', 'ต้มแซ่บไก่บ้าน', 'ต้มแซ่บ', 100, 99, 'ชาม', true, '🍲', 'กลาง', '', 45, 20],
+      ['M010', 'ต้มแซ่บเนื้อ', 'ต้มแซ่บ', 120, 99, 'ชาม', true, '🍲', 'กลาง', '', 55, 21],
+      ['M011', 'อ่อมหมู', 'ต้มแซ่บ', 90, 99, 'ชาม', true, '🍲', 'กลาง', '', 40, 22],
+      ['M012', 'อ่อมเนื้อ', 'ต้มแซ่บ', 90, 99, 'ชาม', true, '🍲', 'กลาง', '', 40, 23],
 
       // ─── เมนูย่าง ───
-      ['M013','ไก่ย่างบ้านสวน','เมนูย่าง',120,99,'ตัว',true,'🍗','','',50,30],
-      ['M014','เสือร้องไห้','เมนูย่าง',120,99,'จาน',true,'🥩','','',55,31],
+      ['M013', 'ไก่ย่างบ้านสวน', 'เมนูย่าง', 120, 99, 'ตัว', true, '🍗', '', '', 50, 30],
+      ['M014', 'เสือร้องไห้', 'เมนูย่าง', 120, 99, 'จาน', true, '🥩', '', '', 55, 31],
 
       // ─── เครื่องเคียง ───
-      ['M015','ข้าวเหนียว','เครื่องเคียง',10,999,'ห่อ',true,'🍚','','',3,40],
-      ['M016','ผักสด/ผักลวก','เครื่องเคียง',0,999,'จาน',true,'🥬','','',5,41],
-      ['M017','แจ่วปลาร้า','เครื่องเคียง',15,999,'ถ้วย',true,'🫙','','',5,42],
-      ['M018','แจ่วบอง','เครื่องเคียง',15,999,'ถ้วย',true,'🫙','','',5,43],
+      ['M015', 'ข้าวเหนียว', 'เครื่องเคียง', 10, 999, 'ห่อ', true, '🍚', '', '', 3, 40],
+      ['M016', 'ผักสด/ผักลวก', 'เครื่องเคียง', 0, 999, 'จาน', true, '🥬', '', '', 5, 41],
+      ['M017', 'แจ่วปลาร้า', 'เครื่องเคียง', 15, 999, 'ถ้วย', true, '🫙', '', '', 5, 42],
+      ['M018', 'แจ่วบอง', 'เครื่องเคียง', 15, 999, 'ถ้วย', true, '🫙', '', '', 5, 43],
 
       // ─── เครื่องดื่ม ───
-      ['M019','น้ำเปล่า','เครื่องดื่ม',15,200,'ขวด',true,'💧','','',7,50],
-      ['M020','น้ำอัดลม','เครื่องดื่ม',20,200,'กระป๋อง',true,'🥤','','',10,51],
-      ['M021','ชาเย็น','เครื่องดื่ม',40,99,'แก้ว',true,'🧋','','',15,52],
-      ['M022','กาแฟเย็น','เครื่องดื่ม',45,99,'แก้ว',true,'☕','','',18,53],
-      ['M023','น้ำมะนาว','เครื่องดื่ม',35,99,'แก้ว',true,'🍋','','',12,54],
-      ['M024','โอเลี้ยง','เครื่องดื่ม',35,99,'แก้ว',true,'☕','','',12,55],
+      ['M019', 'น้ำเปล่า', 'เครื่องดื่ม', 15, 200, 'ขวด', true, '💧', '', '', 7, 50],
+      ['M020', 'น้ำอัดลม', 'เครื่องดื่ม', 20, 200, 'กระป๋อง', true, '🥤', '', '', 10, 51],
+      ['M021', 'ชาเย็น', 'เครื่องดื่ม', 40, 99, 'แก้ว', true, '🧋', '', '', 15, 52],
+      ['M022', 'กาแฟเย็น', 'เครื่องดื่ม', 45, 99, 'แก้ว', true, '☕', '', '', 18, 53],
+      ['M023', 'น้ำมะนาว', 'เครื่องดื่ม', 35, 99, 'แก้ว', true, '🍋', '', '', 12, 54],
+      ['M024', 'โอเลี้ยง', 'เครื่องดื่ม', 35, 99, 'แก้ว', true, '☕', '', '', 12, 55],
     ];
     menu.forEach(r => p.appendRow(r));
   }
@@ -136,44 +136,44 @@ function setupSheets() {
   let o = ss.getSheetByName(SHEET_ORDERS);
   if (!o) o = ss.insertSheet(SHEET_ORDERS);
   if (!o.getRange('A1').getValue()) {
-    o.appendRow(['order_id','date','time','table_no','order_type',
-                 'total','discount','discount_type','grand_total',
-                 'payment','note','cashier','status','customer_count']);
+    o.appendRow(['order_id', 'date', 'time', 'table_no', 'order_type',
+      'total', 'discount', 'discount_type', 'grand_total',
+      'payment', 'note', 'cashier', 'status', 'customer_count']);
     headerStyle(o, 14);
   }
   // Always fix header row to correct format
-  const correctHeaders = ['order_id','date','time','table_no','order_type',
-    'total','discount','discount_type','grand_total',
-    'payment','note','cashier','status','customer_count'];
+  const correctHeaders = ['order_id', 'date', 'time', 'table_no', 'order_type',
+    'total', 'discount', 'discount_type', 'grand_total',
+    'payment', 'note', 'cashier', 'status', 'customer_count'];
   o.getRange(1, 1, 1, 14).setValues([correctHeaders]);
 
   // ─── OrderItems ───
   let i = ss.getSheetByName(SHEET_ITEMS);
   if (!i) i = ss.insertSheet(SHEET_ITEMS);
   if (!i.getRange('A1').getValue()) {
-    i.appendRow(['order_id','product_id','product_name','qty',
-                 'unit_price','subtotal','spice_level','options','note','item_status']);
+    i.appendRow(['order_id', 'product_id', 'product_name', 'qty',
+      'unit_price', 'subtotal', 'spice_level', 'options', 'note', 'item_status']);
     headerStyle(i, 10);
   }
   // Auto-fix OrderItems header
-  i.getRange(1,1,1,10).setValues([['order_id','product_id','product_name','qty','unit_price','subtotal','spice_level','options','note','item_status']]);
+  i.getRange(1, 1, 1, 10).setValues([['order_id', 'product_id', 'product_name', 'qty', 'unit_price', 'subtotal', 'spice_level', 'options', 'note', 'item_status']]);
 
   // ─── Settings ───
   let s = ss.getSheetByName(SHEET_SETTINGS);
   if (!s) s = ss.insertSheet(SHEET_SETTINGS);
   if (!s.getRange('A1').getValue()) {
-    s.appendRow(['key','value']);
+    s.appendRow(['key', 'value']);
     headerStyle(s, 2);
     const defaults = [
-      ['shop_name','ลาบบ้านสวน'],
-      ['shop_phone','090-123-4567'],
-      ['vat','0'],
-      ['last_order_num','0'],
-      ['table_count','10'],
-      ['promptpay_id','0901234567'],
-      ['promo_family_price','299'],
-      ['promo_student_discount','10'],
-      ['promo_checkin_enabled','true'],
+      ['shop_name', 'ลาบบ้านสวน'],
+      ['shop_phone', '090-123-4567'],
+      ['vat', '0'],
+      ['last_order_num', '0'],
+      ['table_count', '10'],
+      ['promptpay_id', '0901234567'],
+      ['promo_family_price', '299'],
+      ['promo_student_discount', '10'],
+      ['promo_checkin_enabled', 'true'],
     ];
     defaults.forEach(r => s.appendRow(r));
   }
@@ -182,7 +182,7 @@ function setupSheets() {
   let r = ss.getSheetByName(SHEET_RESERVATIONS);
   if (!r) r = ss.insertSheet(SHEET_RESERVATIONS);
   if (!r.getRange('A1').getValue()) {
-    r.appendRow(['reservation_id','date','time','table_no','customer_name','party_size','contact','note','status','created_by','created_at']);
+    r.appendRow(['reservation_id', 'date', 'time', 'table_no', 'customer_name', 'party_size', 'contact', 'note', 'status', 'created_by', 'created_at']);
     headerStyle(r, 11);
   }
 
@@ -190,10 +190,10 @@ function setupSheets() {
   let st = ss.getSheetByName(SHEET_STAFF);
   if (!st) st = ss.insertSheet(SHEET_STAFF);
   if (!st.getRange('A1').getValue()) {
-    st.appendRow(['name','pin','role','active']);
+    st.appendRow(['name', 'pin', 'role', 'active']);
     headerStyle(st, 4);
-    st.appendRow(['พนักงาน 1','1234','cashier',true]);
-    st.appendRow(['พนักงาน 2','5678','cashier',true]);
+    st.appendRow(['พนักงาน 1', '1234', 'cashier', true]);
+    st.appendRow(['พนักงาน 2', '5678', 'cashier', true]);
   }
 
   SpreadsheetApp.flush();
@@ -202,11 +202,11 @@ function setupSheets() {
 
 // ── Staff / Login ────────────────────────────────────────────
 function loginWithPin(pin) {
-  let staff = sheetToObjects_(SHEET_STAFF, ['name','pin','role','active']);
+  let staff = sheetToObjects_(SHEET_STAFF, ['name', 'pin', 'role', 'active']);
   // Auto-setup if no staff exists
   if (!staff.length) {
     setupSheets();
-    staff = sheetToObjects_(SHEET_STAFF, ['name','pin','role','active']);
+    staff = sheetToObjects_(SHEET_STAFF, ['name', 'pin', 'role', 'active']);
   }
   const found = staff.find(s => String(s.pin) === String(pin) && s.active !== false);
   if (found) return { success: true, name: found.name, role: found.role };
@@ -214,7 +214,7 @@ function loginWithPin(pin) {
 }
 
 function getStaffList() {
-  return sheetToObjects_(SHEET_STAFF, ['name','pin','role','active'])
+  return sheetToObjects_(SHEET_STAFF, ['name', 'pin', 'role', 'active'])
     .filter(s => s.active !== false)
     .map(s => ({ name: s.name, role: s.role }));
 }
@@ -232,13 +232,13 @@ function saveSetting(key, value) {
   const sh = getSheet_(SHEET_SETTINGS);
   const data = sh.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) { sh.getRange(i+1, 2).setValue(value); return; }
+    if (data[i][0] === key) { sh.getRange(i + 1, 2).setValue(value); return; }
   }
   sh.appendRow([key, value]);
 }
 
 function saveMultipleSettings(kvPairs) {
-  kvPairs.forEach(([k,v]) => saveSetting(k, v));
+  kvPairs.forEach(([k, v]) => saveSetting(k, v));
   return { success: true };
 }
 
@@ -258,289 +258,29 @@ function getProducts() {
       sort_order: Number(r[11]) || 99,
       image_url: r[12] || ''
     }))
-    .sort((a,b) => a.sort_order - b.sort_order);
+    .sort((a, b) => a.sort_order - b.sort_order);
 }
 
-// ── Image Cache (CacheService 6hr) ──────────────────────────
-function getCachedImageData_(fileId) {
-  var cache = CacheService.getScriptCache();
-  var cacheKey = 'img_' + fileId;
-  var cached = cache.get(cacheKey);
-  if (cached) return cached;
-  var data = getImageData(fileId);
-  
-  // If 403 "binary content" — this ID is a folder, not a file
-  if (data && data.indexOf('ERR:HTTP403') === 0 && data.indexOf('binary') !== -1) {
-    var realFileId = getFirstImageInFolder_(fileId);
-    if (realFileId) {
-      data = getImageData(realFileId);
-    }
-  }
-  
-  if (data && data.indexOf('data:') === 0 && data.length < 95000) {
-    try { cache.put(cacheKey, data, 21600); } catch(e) {}
-  }
-  return data;
-}
-
-// ── FAST: Products without images (instant load) ─────────────
-function getProductsBasic() {
-  return getProducts().map(function(p) {
-    var imageUrl = p.image_url ? String(p.image_url).trim() : '';
-    var driveId = resolveDriveId_(imageUrl);
-    return {
-      id: p.id, name: p.name, category: p.category,
-      price: p.price, stock: p.stock, unit: p.unit,
-      active: p.active, emoji: p.emoji,
-      spice_default: p.spice_default, options: p.options,
-      cost: p.cost, sort_order: p.sort_order,
-      image_url: imageUrl,
-      image_data: '',
-      _driveId: driveId || ''
-    };
-  });
-}
-
-// ── BATCH: Fetch multiple images in parallel via fetchAll ─────
-function getImageBatch(driveIds) {
-  if (!driveIds || !driveIds.length) return {};
-  var cache = CacheService.getScriptCache();
-  var token = ScriptApp.getOAuthToken();
-  var result = {};
-  var toFetch = [];
-  
-  // Check cache first
-  for (var i = 0; i < driveIds.length; i++) {
-    var id = driveIds[i];
-    if (!id) continue;
-    var cached = cache.get('img_' + id);
-    if (cached) {
-      result[id] = cached;
-    } else {
-      toFetch.push(id);
-    }
-  }
-  
-  if (!toFetch.length) return result;
-  
-  // Build parallel fetch requests
-  var requests = toFetch.map(function(fid) {
-    return {
-      url: 'https://www.googleapis.com/drive/v3/files/' + fid + '?alt=media',
-      headers: { 'Authorization': 'Bearer ' + token },
-      muteHttpExceptions: true,
-      _fileId: fid
-    };
-  });
-  
-  try {
-    var responses = UrlFetchApp.fetchAll(requests);
-    for (var j = 0; j < responses.length; j++) {
-      var resp = responses[j];
-      var fid = toFetch[j];
-      
-      if (resp.getResponseCode() === 200) {
-        var blob = resp.getBlob();
-        var bytes = blob.getBytes();
-        var type = blob.getContentType() || 'image/jpeg';
-        if (type === 'image/png' && bytes.length > 300000) {
-          try { blob = blob.getAs('image/jpeg'); bytes = blob.getBytes(); type = 'image/jpeg'; } catch(ce) {}
-        }
-        if (bytes.length <= 8000000) {
-          var data = 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
-          result[fid] = data;
-          if (data.length < 95000) {
-            try { cache.put('img_' + fid, data, 21600); } catch(e) {}
-          }
-        }
-      } else if (resp.getResponseCode() === 403) {
-        // Might be a folder — try to find image inside
-        var realId = getFirstImageInFolder_(fid);
-        if (realId) {
-          var imgData = getImageData(realId);
-          if (imgData && imgData.indexOf('data:') === 0) {
-            result[fid] = imgData;
-            if (imgData.length < 95000) {
-              try { cache.put('img_' + fid, imgData, 21600); } catch(e) {}
-            }
-          }
-        }
-      }
-    }
-  } catch(e) {
-    Logger.log('getImageBatch fetchAll error: ' + e.message);
-  }
-  
-  return result;
-}
-
-// ── Products with Images (preloaded base64) — PARALLEL ───────
-function getProductsWithImages() {
-  var prods = getProducts();
-  var token = ScriptApp.getOAuthToken();
-  var cache = CacheService.getScriptCache();
-  
-  // Phase 1: Resolve all Drive IDs and check cache
-  var prodData = [];
-  var uncachedIds = [];
-  var uncachedIdx = [];
-  
-  for (var i = 0; i < prods.length; i++) {
-    var p = prods[i];
-    var imageUrl = p.image_url ? String(p.image_url).trim() : '';
-    var driveId = resolveDriveId_(imageUrl);
-    var imgData = '';
-    
-    if (driveId) {
-      var cached = cache.get('img_' + driveId);
-      if (cached) {
-        imgData = cached;
-      } else {
-        uncachedIds.push(driveId);
-        uncachedIdx.push(i);
-      }
-    } else if (imageUrl.indexOf('data:image') === 0) {
-      imgData = imageUrl;
-    }
-    
-    prodData.push({
-      id: p.id, name: p.name, category: p.category,
-      price: p.price, stock: p.stock, unit: p.unit,
-      active: p.active, emoji: p.emoji,
-      spice_default: p.spice_default, options: p.options,
-      cost: p.cost, sort_order: p.sort_order,
-      image_url: imageUrl,
-      image_data: imgData
-    });
-  }
-  
-  // Phase 2: Fetch all uncached images in PARALLEL
-  if (uncachedIds.length > 0) {
-    var batchResult = getImageBatch(uncachedIds);
-    for (var j = 0; j < uncachedIds.length; j++) {
-      var fid = uncachedIds[j];
-      if (batchResult[fid]) {
-        prodData[uncachedIdx[j]].image_data = batchResult[fid];
-      }
-    }
-  }
-  
-  return prodData;
-}
-
-
-// Helper: find first image file inside a Drive folder via API v3
-function getFirstImageInFolder_(folderId) {
-  var cache = CacheService.getScriptCache();
-  var cacheKey = 'fld_' + folderId;
-  var cachedId = cache.get(cacheKey);
-  if (cachedId) return cachedId;
-  
-  try {
-    var token = ScriptApp.getOAuthToken();
-    var apiUrl = 'https://www.googleapis.com/drive/v3/files'
-      + '?q=' + encodeURIComponent("'" + folderId + "' in parents and mimeType contains 'image/' and trashed=false")
-      + '&fields=files(id,name,mimeType)'
-      + '&pageSize=1'
-      + '&orderBy=name';
-    var resp = UrlFetchApp.fetch(apiUrl, {
-      headers: { 'Authorization': 'Bearer ' + token },
-      muteHttpExceptions: true
-    });
-    if (resp.getResponseCode() === 200) {
-      var json = JSON.parse(resp.getContentText());
-      if (json.files && json.files.length > 0) {
-        var fid = json.files[0].id;
-        cache.put(cacheKey, fid, 21600);
-        return fid;
-      }
-    }
-  } catch(e) {
-    Logger.log('getFirstImageInFolder_ error: ' + e.message);
-  }
-  return null;
-}
-
-/**
- * Resolves a Google Drive URL or ID to a File ID.
- * Supports: drive:ID, raw ID, folder URLs, file URLs, open?id= URLs
- * Uses Drive API v3 for folder listing (bypasses Education domain DriveApp restrictions)
- */
-function resolveDriveId_(url) {
-  if (!url) return null;
-  url = String(url).trim();
-  if (!url || url === '' || url === '-') return null;
-  
-  // 1. Existing drive: format
-  if (url.indexOf('drive:') === 0) return url.replace('drive:', '');
-  
-  // 2. Direct ID (no slashes, no dots, 20-60 chars)
-  if (/^[a-zA-Z0-9_-]{20,60}$/.test(url)) return url;
-
-  // 3. Drive File URL — check BEFORE folder to avoid false folder match
-  var fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]{20,60})/);
-  if (!fileMatch) fileMatch = url.match(/[?&]id=([a-zA-Z0-9_-]{20,60})/);
-  if (!fileMatch) fileMatch = url.match(/\/uc\?.*id=([a-zA-Z0-9_-]{20,60})/);
-  if (fileMatch) return fileMatch[1];
-
-  // 4. Drive Folder URL — list files via Drive API v3
-  var folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]{20,60})/);
-  if (folderMatch) {
-    var folderId = folderMatch[1];
-    return getFirstImageInFolder_(folderId);
-  }
-
-  return null;
-}
-
-// Customer menu - preload images server-side (uses cache + parallel)
+// Customer menu - preload images server-side
 function getMenuForCustomer() {
-  var allProds = getProducts();
-  var cache = CacheService.getScriptCache();
-  var prodData = [];
-  var uncachedIds = [];
-  var uncachedIdx = [];
-  
-  for (var i = 0; i < allProds.length; i++) {
-    var p = allProds[i];
-    var imageUrl = p.image_url ? String(p.image_url).trim() : '';
-    var driveId = resolveDriveId_(imageUrl);
+  const prods = getProducts().map(p => {
     var imgData = '';
-    
-    if (driveId) {
-      var cached = cache.get('img_' + driveId);
-      if (cached) {
-        imgData = cached;
-      } else {
-        uncachedIds.push(driveId);
-        uncachedIdx.push(i);
-      }
-    } else if (imageUrl.indexOf('data:image') === 0) {
-      imgData = imageUrl;
+    if (p.image_url && String(p.image_url).indexOf('drive:') === 0) {
+      try {
+        var fid = String(p.image_url).replace('drive:', '');
+        imgData = getImageData(fid);
+      } catch (e) { imgData = 'ERR:' + e.message; }
     }
-    
-    prodData.push({
+    return {
       id: p.id, name: p.name, category: p.category,
       price: p.price, unit: p.unit, emoji: p.emoji,
       spice_default: p.spice_default, options: p.options,
-      image_url: imageUrl,
-      image_data: imgData
-    });
-  }
-  
-  // Parallel fetch uncached images
-  if (uncachedIds.length > 0) {
-    var batchResult = getImageBatch(uncachedIds);
-    for (var j = 0; j < uncachedIds.length; j++) {
-      var fid = uncachedIds[j];
-      if (batchResult[fid]) {
-        prodData[uncachedIdx[j]].image_data = batchResult[fid];
-      }
-    }
-  }
-  
-  var sett = getSettings();
-  return { products: prodData, shopName: sett.shop_name || 'ลาบบ้านสวน' };
+      image_data: imgData,
+      has_drive: p.image_url ? String(p.image_url).substring(0, 40) : ''
+    };
+  });
+  const sett = getSettings();
+  return { products: prods, shopName: sett.shop_name || 'ลาบบ้านสวน' };
 }
 
 
@@ -563,7 +303,7 @@ function updateProduct(data) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === data.id) {
-      sh.getRange(i+1, 2, 1, 11).setValues([[
+      sh.getRange(i + 1, 2, 1, 11).setValues([[
         data.name, data.category, Number(data.price), Number(data.stock),
         data.unit, data.active !== false, data.emoji || '🍽️',
         data.spice_default || '', data.options || '',
@@ -579,7 +319,7 @@ function deleteProduct(id) {
   const sh = getSheet_(SHEET_PRODUCTS);
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) { sh.getRange(i+1, 7).setValue(false); return { success: true }; }
+    if (rows[i][0] === id) { sh.getRange(i + 1, 7).setValue(false); return { success: true }; }
   }
   return { success: false };
 }
@@ -590,7 +330,7 @@ function updateStock(id, delta) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
       const ns = Math.max(0, Number(rows[i][4]) + delta);
-      sh.getRange(i+1, 5).setValue(ns);
+      sh.getRange(i + 1, 5).setValue(ns);
       return ns;
     }
   }
@@ -602,7 +342,7 @@ function generateOrderId_() {
   const data = sh.getDataRange().getValues();
   let num = 0, row = -1;
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === 'last_order_num') { num = Number(data[i][1]) || 0; row = i+1; break; }
+    if (String(data[i][0]).trim() === 'last_order_num') { num = Number(data[i][1]) || 0; row = i + 1; break; }
   }
   num++;
   if (row > 0) {
@@ -614,7 +354,7 @@ function generateOrderId_() {
   SpreadsheetApp.flush();
   const d = new Date();
   const prefix = Utilities.formatDate(d, 'Asia/Bangkok', 'yyyyMMdd');
-  return 'ORD-' + prefix + '-' + String(num).padStart(4,'0');
+  return 'ORD-' + prefix + '-' + String(num).padStart(4, '0');
 }
 
 function saveOrder(orderData) {
@@ -666,7 +406,7 @@ function saveOrder(orderData) {
       shopPhone: settings.shop_phone || '',
       date, time
     };
-  } catch(e) {
+  } catch (e) {
     return { success: false, message: e.toString() };
   }
 }
@@ -678,45 +418,12 @@ function updateOrderStatus(orderId, status, tableNo) {
   const tbl = tableNo ? String(tableNo).trim() : '';
   for (let i = data.length - 1; i >= 1; i--) {
     var matchId = String(data[i][0]).trim() === oid;
-    var matchTbl = !tbl || String(data[i][3]).trim().replace(/['"]/g,'') === tbl;
+    var matchTbl = !tbl || String(data[i][3]).trim().replace(/['"]/g, '') === tbl;
     if (matchId && matchTbl) {
       var oldStatus = String(data[i][12]);
-      sh.getRange(i+1, 13).setValue(status);
-      
-      if (status === 'cooking') {
-        // Bulk-set all items to cooking when starting
-        var iSh = getSheet_(SHEET_ITEMS);
-        var iData = iSh.getDataRange().getValues();
-        for (var j = 1; j < iData.length; j++) {
-          if (String(iData[j][0]).trim() === oid) {
-            iSh.getRange(j+1, 10).setValue('cooking');
-          }
-        }
-      } else if (status === 'served') {
-        // Mark only remaining non-served items as served
-        var iSh2 = getSheet_(SHEET_ITEMS);
-        var iData2 = iSh2.getDataRange().getValues();
-        for (var j2 = 1; j2 < iData2.length; j2++) {
-          if (String(iData2[j2][0]).trim() === oid && String(iData2[j2][9]) !== 'served') {
-            iSh2.getRange(j2+1, 10).setValue('served');
-          }
-        }
-      } else if (status === 'completed') {
-        // Clear all notifications for this table
-        var tblStr = tbl || String(data[i][3]).trim().replace(/['"]/g,'');
-        try {
-          var nSh = getSheet_('Notifications');
-          var nData = nSh.getDataRange().getValues();
-          for (var k = nData.length - 1; k >= 1; k--) {
-            if (String(nData[k][0]).trim() === tblStr && String(nData[k][3]) !== 'dismissed') {
-              nSh.getRange(k+1, 4).setValue('dismissed');
-            }
-          }
-        } catch(ne) { /* Notifications sheet may not exist */ }
-      }
-      
+      sh.getRange(i + 1, 13).setValue(status);
       SpreadsheetApp.flush();
-      return { success: true, oldStatus: oldStatus, newStatus: status, row: i+1, table: String(data[i][3]) };
+      return { success: true, oldStatus: oldStatus, newStatus: status, row: i + 1, table: String(data[i][3]) };
     }
   }
   return { success: false, message: 'ไม่พบ Order: ' + oid + ' table: ' + tbl };
@@ -728,9 +435,9 @@ function cancelOrder(orderId, reason) {
   const oid = String(orderId).trim();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === oid) {
-      sh.getRange(i+1, 13).setValue('cancelled');
+      sh.getRange(i + 1, 13).setValue('cancelled');
       const note = data[i][10] ? data[i][10] + ' | ยกเลิก: ' + reason : 'ยกเลิก: ' + reason;
-      sh.getRange(i+1, 11).setValue(note);
+      sh.getRange(i + 1, 11).setValue(note);
       const items = getOrderItems_(orderId);
       items.forEach(item => updateStock(item.product_id, item.qty));
       return { success: true };
@@ -777,7 +484,7 @@ function updateItemStatus(orderId, itemRow, newStatus) {
     var oData = oSh.getDataRange().getValues();
     for (var j = oData.length - 1; j >= 1; j--) {
       if (String(oData[j][0]).trim() === String(orderId).trim()) {
-        oSh.getRange(j+1, 13).setValue('served');
+        oSh.getRange(j + 1, 13).setValue('served');
         break;
       }
     }
@@ -808,13 +515,13 @@ function trackOrder(orderId, tableNo) {
 
     if (!order && tbl) {
       for (var j = oData.length - 1; j >= 1; j--) {
-        var rowTbl = String(oData[j][3]).trim().replace(/['"]/g,'');
+        var rowTbl = String(oData[j][3]).trim().replace(/['"]/g, '');
         var rowStatus = String(oData[j][12] || '').trim();
         var rowDate = oData[j][1] instanceof Date ? Utilities.formatDate(oData[j][1], 'Asia/Bangkok', 'yyyy-MM-dd') : String(oData[j][1]).trim();
         if (rowTbl == tbl && rowDate === today && debugInfo.length < 5) {
-          debugInfo.push('r' + (j+1) + ':id=' + String(oData[j][0]).substring(0,20) + ',st=' + rowStatus);
+          debugInfo.push('r' + (j + 1) + ':id=' + String(oData[j][0]).substring(0, 20) + ',st=' + rowStatus);
         }
-        if (rowTbl == tbl && rowDate === today && ['new','cooking','served','completed'].indexOf(rowStatus) !== -1) {
+        if (rowTbl == tbl && rowDate === today && ['new', 'cooking', 'served', 'completed'].indexOf(rowStatus) !== -1) {
           order = { orderId: String(oData[j][0]), date: rowDate, time: oData[j][2], tableNo: String(oData[j][3]), status: rowStatus, total: Number(oData[j][8]) };
           break;
         }
@@ -823,7 +530,7 @@ function trackOrder(orderId, tableNo) {
 
     if (!order) {
       for (var k = Math.max(1, oData.length - 5); k < oData.length; k++) {
-        debugInfo.push('r' + (k+1) + ':id=[' + String(oData[k][0]).substring(0,25) + ']|t=' + typeof oData[k][0] + '|st=' + String(oData[k][12]));
+        debugInfo.push('r' + (k + 1) + ':id=[' + String(oData[k][0]).substring(0, 25) + ']|t=' + typeof oData[k][0] + '|st=' + String(oData[k][12]));
       }
       return { success: false, message: 'SEARCH:oid=[' + oid + ']tbl=[' + tbl + ']today=' + today + '|ROWS=' + oData.length + '|' + debugInfo.join('|') };
     }
@@ -838,7 +545,7 @@ function trackOrder(orderId, tableNo) {
     var allServed = items.length > 0 && servedCount === items.length;
 
     return { success: true, order: order, items: items, allServed: allServed, servedCount: servedCount };
-  } catch(e) {
+  } catch (e) {
     return { success: false, message: 'ERR:' + String(e) };
   }
 }
@@ -865,7 +572,7 @@ function getOrderTracking(orderId) {
     if (!order) {
       var dbg = [];
       for (var k = Math.max(1, oData.length - 5); k < oData.length; k++) {
-        dbg.push('r' + (k+1) + ':[' + String(oData[k][0]).substring(0,25) + ']t=' + typeof oData[k][0]);
+        dbg.push('r' + (k + 1) + ':[' + String(oData[k][0]).substring(0, 25) + ']t=' + typeof oData[k][0]);
       }
       return { success: false, message: 'ID_SEARCH:[' + oid + '] rows=' + oData.length + ' | ' + dbg.join(' | ') };
     }
@@ -877,7 +584,7 @@ function getOrderTracking(orderId) {
     var sc = 0;
     for (var n = 0; n < mapped.length; n++) { if (mapped[n].item_status === 'served') sc++; }
     return { success: true, order: order, items: mapped, allServed: mapped.length > 0 && sc === mapped.length, servedCount: sc };
-  } catch(e) {
+  } catch (e) {
     return { success: false, message: 'TRACK_ERR:' + String(e) };
   }
 }
@@ -891,13 +598,13 @@ function getOrderTrackingByTable(tableNo) {
     var order = null;
     var dbg = [];
     for (var j = oData.length - 1; j >= 1; j--) {
-      var rowTbl = String(oData[j][3]).trim().replace(/['"]/g,'');
+      var rowTbl = String(oData[j][3]).trim().replace(/['"]/g, '');
       var rowSt = String(oData[j][12] || '').trim();
       var rowDt = oData[j][1] instanceof Date ? Utilities.formatDate(oData[j][1], 'Asia/Bangkok', 'yyyy-MM-dd') : String(oData[j][1]).trim();
       if (rowTbl == tbl && rowDt === today && dbg.length < 5) {
-        dbg.push('r' + (j+1) + ':[' + String(oData[j][0]).substring(0,25) + ']st=' + rowSt);
+        dbg.push('r' + (j + 1) + ':[' + String(oData[j][0]).substring(0, 25) + ']st=' + rowSt);
       }
-      if (rowTbl == tbl && rowDt === today && ['new','cooking','served','completed'].indexOf(rowSt) !== -1) {
+      if (rowTbl == tbl && rowDt === today && ['new', 'cooking', 'served', 'completed'].indexOf(rowSt) !== -1) {
         order = { orderId: String(oData[j][0]), date: rowDt, time: String(oData[j][2]), tableNo: String(oData[j][3]), status: rowSt, total: Number(oData[j][8]) };
         break;
       }
@@ -911,7 +618,7 @@ function getOrderTrackingByTable(tableNo) {
     var sc = 0;
     for (var n = 0; n < mapped.length; n++) { if (mapped[n].item_status === 'served') sc++; }
     return { success: true, order: order, items: mapped, allServed: mapped.length > 0 && sc === mapped.length, servedCount: sc };
-  } catch(e) {
+  } catch (e) {
     return { success: false, message: 'TBL_ERR:' + String(e) };
   }
 }
@@ -963,7 +670,7 @@ function getKitchenOrders() {
   if (data.length <= 1) return [];
 
   const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
-  const activeStatuses = ['new','cooking'];
+  const activeStatuses = ['new', 'cooking'];
 
   const orders = data.slice(1)
     .filter(r => {
@@ -980,7 +687,7 @@ function getKitchenOrders() {
       items: getOrderItems_(r[0])
     }));
 
-  return orders.sort((a,b) => a.time > b.time ? 1 : -1);
+  return orders.sort((a, b) => a.time > b.time ? 1 : -1);
 }
 
 // ── Order History ────────────────────────────────────────────
@@ -991,7 +698,7 @@ function getOrderHistory(days) {
 
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - (days || 7));
-  cutoff.setHours(0,0,0,0);
+  cutoff.setHours(0, 0, 0, 0);
 
   return data.slice(1)
     .filter(r => new Date(r[1]) >= cutoff)
@@ -1108,12 +815,12 @@ function getTableStatus() {
         if (rowDate instanceof Date) {
           rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
         }
-        return String(rowDate) === today && String(r[3]).trim().replace(/['"]/g,'') === tableStr && ['new','cooking','served'].includes(String(r[12]));
+        return String(rowDate) === today && String(r[3]).trim().replace(/['"]/g, '') === tableStr && ['new', 'cooking', 'served'].includes(String(r[12]));
       });
       // Priority: cooking/served orders first (active), then new
-      const activeOrder = todayOrders.filter(r => ['cooking','served'].includes(String(r[12]))).pop()
-                       || todayOrders.filter(r => String(r[12]) === 'new').pop()
-                       || null;
+      const activeOrder = todayOrders.filter(r => ['cooking', 'served'].includes(String(r[12]))).pop()
+        || todayOrders.filter(r => String(r[12]) === 'new').pop()
+        || null;
 
       if (activeOrder) {
         var orderTime = activeOrder[2];
@@ -1138,7 +845,7 @@ function getTableStatus() {
         continue;
       }
 
-      const reservation = reservations.find(r => String(r.tableNo).trim() === tableStr && ['reserved','arrived','seated'].includes(r.status));
+      const reservation = reservations.find(r => String(r.tableNo).trim() === tableStr && ['reserved', 'arrived', 'seated'].includes(r.status));
       if (reservation) {
         tables.push({
           no: t,
@@ -1180,7 +887,7 @@ function countOrderItems_(orderId) {
     const sh = getSheet_(SHEET_ITEMS);
     const data = sh.getDataRange().getValues();
     return data.slice(1).filter(r => String(r[0]) === orderId).length;
-  } catch(e) { return 0; }
+  } catch (e) { return 0; }
 }
 
 // ── Reports ──────────────────────────────────────────────────
@@ -1188,21 +895,21 @@ function getReport(startDate, endDate) {
   const oSh = getSheet_(SHEET_ORDERS);
   const iSh = getSheet_(SHEET_ITEMS);
   const orders = oSh.getDataRange().getValues().slice(1);
-  const items  = iSh.getDataRange().getValues().slice(1);
+  const items = iSh.getDataRange().getValues().slice(1);
 
-  const start = new Date(startDate); start.setHours(0,0,0,0);
-  const end   = new Date(endDate);   end.setHours(23,59,59,999);
+  const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate); end.setHours(23, 59, 59, 999);
 
   const filtered = orders.filter(r => {
     const d = new Date(r[1]);
     return d >= start && d <= end && r[12] !== 'cancelled';
   });
 
-  const totalSales = filtered.reduce((s,r) => s + Number(r[8]), 0);
-  const totalDiscount = filtered.reduce((s,r) => s + Number(r[6]), 0);
+  const totalSales = filtered.reduce((s, r) => s + Number(r[8]), 0);
+  const totalDiscount = filtered.reduce((s, r) => s + Number(r[6]), 0);
   const orderCount = filtered.length;
   const avgOrder = orderCount ? totalSales / orderCount : 0;
-  const customerCount = filtered.reduce((s,r) => s + (Number(r[13]) || 1), 0);
+  const customerCount = filtered.reduce((s, r) => s + (Number(r[13]) || 1), 0);
 
   // Top products
   const ordIds = new Set(filtered.map(r => r[0]));
@@ -1214,7 +921,7 @@ function getReport(startDate, endDate) {
     prodMap[k].qty += Number(r[3]);
     prodMap[k].revenue += Number(r[5]);
   });
-  const topProducts = Object.values(prodMap).sort((a,b) => b.revenue - a.revenue).slice(0,10);
+  const topProducts = Object.values(prodMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
   // Payment breakdown
   const payMap = {};
@@ -1232,8 +939,8 @@ function getReport(startDate, endDate) {
     dailyMap[r[1]].orders++;
   });
   const daily = Object.entries(dailyMap)
-    .sort((a,b) => a[0] > b[0] ? 1 : -1)
-    .map(([d,v]) => ({ date: d, sales: v.sales, orders: v.orders }));
+    .sort((a, b) => a[0] > b[0] ? 1 : -1)
+    .map(([d, v]) => ({ date: d, sales: v.sales, orders: v.orders }));
 
   // Hourly breakdown (for today)
   const hourlyMap = {};
@@ -1257,21 +964,21 @@ function getTodayReport() {
 function getAllData() {
   var prods = [];
   var sett = {};
-  try { prods = getProductsWithImages(); } catch(e) {
-    try { prods = getProducts(); } catch(e2) {}
+  try { prods = getProductsWithImages(); } catch (e) {
+    try { prods = getProducts(); } catch (e2) { }
   }
   if (!prods.length) {
-    try { setupSheets(); } catch(e) {}
-    try { prods = getProductsWithImages(); } catch(e) {
-      try { prods = getProducts(); } catch(e2) {}
+    try { setupSheets(); } catch (e) { }
+    try { prods = getProductsWithImages(); } catch (e) {
+      try { prods = getProducts(); } catch (e2) { }
     }
   }
-  try { sett = getSettings(); } catch(e) {}
+  try { sett = getSettings(); } catch (e) { }
   // Auto-fix Orders header
   try {
     var oSh = getSS_().getSheetByName(SHEET_ORDERS);
-    if (oSh) oSh.getRange(1,1,1,14).setValues([['order_id','date','time','table_no','order_type','total','discount','discount_type','grand_total','payment','note','cashier','status','customer_count']]);
-  } catch(e) {}
+    if (oSh) oSh.getRange(1, 1, 1, 14).setValues([['order_id', 'date', 'time', 'table_no', 'order_type', 'total', 'discount', 'discount_type', 'grand_total', 'payment', 'note', 'cashier', 'status', 'customer_count']]);
+  } catch (e) { }
   return { products: prods, settings: sett, tables: [], todayReport: {} };
 }
 
@@ -1305,12 +1012,12 @@ function clearTestOrders() {
   const oSh = getSheet_(SHEET_ORDERS);
   const iSh = getSheet_(SHEET_ITEMS);
   const today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
-  
+
   // Collect orderId of today's orders
   const orders = oSh.getDataRange().getValues();
   const todayIds = [];
   const rowsToDelete = [];
-  
+
   for (let i = orders.length - 1; i >= 1; i--) {
     let rowDate = orders[i][1];
     if (rowDate instanceof Date) rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
@@ -1319,10 +1026,10 @@ function clearTestOrders() {
       rowsToDelete.push(i + 1);
     }
   }
-  
+
   // Delete order rows (reverse to avoid shifting)
   rowsToDelete.forEach(r => oSh.deleteRow(r));
-  
+
   // Delete matching items
   const items = iSh.getDataRange().getValues();
   const itemRowsToDelete = [];
@@ -1332,17 +1039,17 @@ function clearTestOrders() {
     }
   }
   itemRowsToDelete.forEach(r => iSh.deleteRow(r));
-  
+
   // Reset counter
   const settSh = getSheet_(SHEET_SETTINGS);
   const settData = settSh.getDataRange().getValues();
   for (let i = 1; i < settData.length; i++) {
     if (String(settData[i][0]).trim() === 'last_order_num') {
-      settSh.getRange(i+1, 2).setValue(0);
+      settSh.getRange(i + 1, 2).setValue(0);
       break;
     }
   }
-  
+
   SpreadsheetApp.flush();
   return { cleared: rowsToDelete.length, items: itemRowsToDelete.length, date: today };
 }
@@ -1353,7 +1060,7 @@ function deduplicateProducts() {
   const data = sh.getDataRange().getValues();
   const seen = {};
   const rowsToDelete = [];
-  
+
   for (let i = 1; i < data.length; i++) {
     const id = String(data[i][0]).trim();
     if (!id) { rowsToDelete.push(i + 1); continue; }
@@ -1363,12 +1070,12 @@ function deduplicateProducts() {
       seen[id] = true;
     }
   }
-  
+
   // Delete in reverse to avoid row shifting
   for (let i = rowsToDelete.length - 1; i >= 0; i--) {
     sh.deleteRow(rowsToDelete[i]);
   }
-  
+
   SpreadsheetApp.flush();
   return { removed: rowsToDelete.length, remaining: Object.keys(seen).length };
 }
@@ -1393,7 +1100,7 @@ function saveFoodImage(productId, base64Data) {
   var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', productId + '.png');
   var file = folder.createFile(blob);
   // Try to share publicly, skip if blocked by domain
-  try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(e) {}
+  try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) { }
   var url = 'https://drive.google.com/uc?id=' + file.getId();
   updateProductImageUrl_(productId, url);
   return { success: true, url: url, fileId: file.getId() };
@@ -1435,7 +1142,7 @@ function syncFoodImages() {
     var folders = DriveApp.getFoldersByName('POS_FoodImages');
     if (!folders.hasNext()) return { success: false, message: 'ไม่พบโฟลเดอร์ POS_FoodImages' };
     var folder = folders.next();
-    
+
     // Collect files first
     var fileList = [];
     var files = folder.getFiles();
@@ -1443,7 +1150,7 @@ function syncFoodImages() {
       var f = files.next();
       fileList.push({ name: f.getName(), id: f.getId() });
     }
-    
+
     var sh = getSheet_(SHEET_PRODUCTS);
     var data = sh.getDataRange().getValues();
     var headers = data[0];
@@ -1452,12 +1159,12 @@ function syncFoodImages() {
       imgCol = headers.length;
       sh.getRange(1, imgCol + 1).setValue('image_url');
     }
-    
+
     var prodMap = {};
     for (var i = 1; i < data.length; i++) {
       prodMap[String(data[i][0]).trim().toUpperCase()] = i + 1;
     }
-    
+
     var matched = 0;
     var skipped = [];
     for (var j = 0; j < fileList.length; j++) {
@@ -1471,7 +1178,7 @@ function syncFoodImages() {
     }
     SpreadsheetApp.flush();
     return { success: true, matched: matched, skipped: skipped, total: fileList.length };
-  } catch(e) {
+  } catch (e) {
     return { success: false, message: e.message };
   }
 }
@@ -1497,18 +1204,18 @@ function getImageData(fileId) {
         blob = blob.getAs('image/jpeg');
         bytes = blob.getBytes();
         type = 'image/jpeg';
-      } catch(ce) {}
+      } catch (ce) { }
     }
     if (bytes.length > 8000000) return 'ERR:file_too_large_' + bytes.length;
     return 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
-  } catch(e) {
+  } catch (e) {
     return 'ERR:' + e.message;
   }
 }
 
 // DIAGNOSTIC: Run from Editor to test Drive image access
 function testImageLoad() {
-  var prods = getProducts().filter(function(p){ return p.image_url; });
+  var prods = getProducts().filter(function (p) { return p.image_url; });
   if (!prods.length) return 'ไม่มีสินค้าที่มี image_url';
   var p = prods[0];
   var fid = resolveDriveId_(p.image_url);
@@ -1521,7 +1228,7 @@ function testImageLoad() {
 
 // DIAGNOSTIC: Test URL resolution for ALL products that have image_url
 function testResolveAllUrls() {
-  var prods = getProducts().filter(function(p){ return p.image_url; });
+  var prods = getProducts().filter(function (p) { return p.image_url; });
   var results = [];
   for (var i = 0; i < prods.length; i++) {
     var p = prods[i];
@@ -1532,7 +1239,7 @@ function testResolveAllUrls() {
       try {
         var imgData = getImageData(resolved);
         status = imgData.indexOf('data:') === 0 ? 'OK (len=' + imgData.length + ')' : imgData.substring(0, 80);
-      } catch(e) {
+      } catch (e) {
         status = 'FETCH_ERR: ' + e.message;
       }
     }
