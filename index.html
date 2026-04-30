@@ -1,1146 +1,529 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>POS - ลาบบ้านสวน</title>
-  <style>
-    :root {
-      --p: #FF6B35;
-      --pd: #E85A24;
-      --dk: #1A1A2E;
-      --dk2: #16213E;
-      --mid: #0F3460;
-      --c: #1E2A45;
-      --c2: #253352;
-      --t: #E8EDF5;
-      --t2: #9BABC8;
-      --g: #2ECC71;
-      --r: #E74C3C;
-      --w: #F39C12;
-      --b: rgba(255, 255, 255, .08);
-      --rad: 12px
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box
-    }
-
-    body {
-      font-family: 'Sarabun', system-ui, sans-serif;
-      background: var(--dk);
-      color: var(--t);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden
-    }
-
-    /* Login */
-    #login {
-      position: fixed;
-      inset: 0;
-      background: var(--dk);
-      z-index: 200;
-      display: flex;
-      align-items: center;
-      justify-content: center
-    }
-
-    #login.hidden {
-      display: none
-    }
-
-    .login-box {
-      text-align: center;
-      width: 320px
-    }
-
-    .login-box h1 {
-      font-size: 28px;
-      color: var(--p);
-      margin-bottom: 4px
-    }
-
-    .login-box p {
-      color: var(--t2);
-      margin-bottom: 24px;
-      font-size: 14px
-    }
-
-    .pin-dots {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-bottom: 20px
-    }
-
-    .pin-dot {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 2px solid var(--t2);
-      transition: .2s
-    }
-
-    .pin-dot.filled {
-      background: var(--p);
-      border-color: var(--p)
-    }
-
-    .pin-pad {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      max-width: 240px;
-      margin: 0 auto
-    }
-
-    .pin-btn {
-      padding: 16px;
-      border-radius: 12px;
-      border: 1px solid var(--b);
-      background: var(--c);
-      color: var(--t);
-      font-size: 22px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: .15s;
-      font-family: inherit
-    }
-
-    .pin-btn:hover {
-      background: var(--c2);
-      border-color: var(--p)
-    }
-
-    .pin-btn:active {
-      transform: scale(.95)
-    }
-
-    .pin-btn.del {
-      font-size: 14px;
-      color: var(--r)
-    }
-
-    .pin-btn.ok {
-      background: var(--p);
-      color: #fff;
-      border-color: var(--p)
-    }
-
-    .pin-err {
-      color: var(--r);
-      font-size: 13px;
-      min-height: 20px;
-      margin-top: 12px
-    }
-
-    /* Topbar */
-    #topbar {
-      background: var(--dk2);
-      border-bottom: 1px solid var(--b);
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      height: 52px;
-      gap: 6px;
-      flex-shrink: 0
-    }
-
-    .logo {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--p);
-      margin-right: 8px;
-      white-space: nowrap
-    }
-
-    .logo span {
-      color: var(--t);
-      font-weight: 300
-    }
-
-    .tab-btn {
-      padding: 6px 14px;
-      border-radius: 18px;
-      border: none;
-      background: transparent;
-      color: var(--t2);
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: .2s;
-      white-space: nowrap
-    }
-
-    .tab-btn:hover {
-      color: var(--t);
-      background: var(--b)
-    }
-
-    .tab-btn.active {
-      background: var(--p);
-      color: #fff
-    }
-
-    #clock {
-      margin-left: auto;
-      font-size: 12px;
-      color: var(--t2);
-      white-space: nowrap
-    }
-
-    #staff-name {
-      font-size: 12px;
-      color: var(--p);
-      margin-left: 8px
-    }
-
-    /* Pages */
-    .page {
-      display: none;
-      flex: 1;
-      overflow: hidden
-    }
-
-    .page.active {
-      display: flex
-    }
-
-    /* POS Page */
-    #page-pos {
-      flex-direction: row
-    }
-
-    #pos-left {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      border-right: 1px solid var(--b)
-    }
-
-    #cat-bar {
-      display: flex;
-      gap: 6px;
-      padding: 10px 12px;
-      overflow-x: auto;
-      border-bottom: 1px solid var(--b);
-      flex-shrink: 0
-    }
-
-    #cat-bar::-webkit-scrollbar {
-      height: 3px
-    }
-
-    #cat-bar::-webkit-scrollbar-thumb {
-      background: var(--p);
-      border-radius: 3px
-    }
-
-    .cat-pill {
-      padding: 5px 12px;
-      border-radius: 16px;
-      border: 1.5px solid var(--b);
-      background: transparent;
-      color: var(--t2);
-      font-family: inherit;
-      font-size: 12px;
-      cursor: pointer;
-      transition: .2s;
-      white-space: nowrap
-    }
-
-    .cat-pill:hover,
-    .cat-pill.active {
-      border-color: var(--p);
-      color: var(--p);
-      background: rgba(255, 107, 53, .1)
-    }
-
-    #search-bar {
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--b);
-      flex-shrink: 0
-    }
-
-    #search-bar input {
-      width: 100%;
-      background: var(--c);
-      border: 1px solid var(--b);
-      border-radius: 8px;
-      padding: 8px 12px;
-      color: var(--t);
-      font-family: inherit;
-      font-size: 13px
-    }
-
-    #search-bar input:focus {
-      outline: none;
-      border-color: var(--p)
-    }
-
-    #prod-grid {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 8px;
-      align-content: start
-    }
-
-    #prod-grid::-webkit-scrollbar {
-      width: 4px
-    }
-
-    #prod-grid::-webkit-scrollbar-thumb {
-      background: var(--mid);
-      border-radius: 3px
-    }
-
-    .pc {
-      background: var(--c);
-      border: 1px solid var(--b);
-      border-radius: var(--rad);
-      padding: 12px 8px;
-      cursor: pointer;
-      transition: .18s;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 4px;
-      position: relative
-    }
-
-    .pc:hover {
-      border-color: var(--p);
-      background: var(--c2);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(255, 107, 53, .2)
-    }
-
-    .pc:active {
-      transform: scale(.97)
-    }
-
-    .pc .em {
-      font-size: 28px
-    }
-
-    .pc .nm {
-      font-size: 12px;
-      font-weight: 600;
-      line-height: 1.3
-    }
-
-    .pc .pr {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--p)
-    }
-
-    .pc .st {
-      font-size: 10px;
-      color: var(--t2)
-    }
-
-    .pc .badge {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      background: var(--p);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center
-    }
-
-    .pc.out {
-      opacity: .35;
-      pointer-events: none
-    }
-
-    /* Cart */
-    #pos-right {
-      width: 300px;
-      display: flex;
-      flex-direction: column;
-      background: var(--dk2);
-      flex-shrink: 0
-    }
-
-    .cart-hd {
-      padding: 12px;
-      border-bottom: 1px solid var(--b);
-      display: flex;
-      align-items: center;
-      justify-content: space-between
-    }
-
-    .cart-hd h3 {
-      font-size: 15px;
-      font-weight: 600
-    }
-
-    .cart-hd select,
-    .cart-hd button {
-      background: var(--c);
-      border: 1px solid var(--b);
-      color: var(--t2);
-      border-radius: 6px;
-      padding: 3px 8px;
-      font-size: 11px;
-      font-family: inherit;
-      cursor: pointer
-    }
-
-    #cart-items {
-      flex: 1;
-      overflow-y: auto;
-      padding: 6px
-    }
-
-    #cart-items::-webkit-scrollbar {
-      width: 3px
-    }
-
-    #cart-items::-webkit-scrollbar-thumb {
-      background: var(--mid);
-      border-radius: 3px
-    }
-
-    .cart-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: var(--t2);
-      font-size: 13px;
-      gap: 6px
-    }
-
-    .cart-empty .ic {
-      font-size: 36px;
-      opacity: .3
-    }
-
-    .ci {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px;
-      border-radius: 8px;
-      background: var(--c);
-      margin-bottom: 4px;
-      border: 1px solid var(--b)
-    }
-
-    .ci .info {
-      flex: 1;
-      min-width: 0
-    }
-
-    .ci .nm {
-      font-size: 12px;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis
-    }
-
-    .ci .meta {
-      font-size: 10px;
-      color: var(--t2)
-    }
-
-    .ci .ctrls {
-      display: flex;
-      align-items: center;
-      gap: 4px
-    }
-
-    .qb {
-      width: 22px;
-      height: 22px;
-      border-radius: 5px;
-      border: 1px solid var(--b);
-      background: var(--c2);
-      color: var(--t);
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: .15s
-    }
-
-    .qb:hover {
-      background: var(--p);
-      border-color: var(--p)
-    }
-
-    .ci .qty {
-      font-size: 13px;
-      font-weight: 600;
-      min-width: 16px;
-      text-align: center
-    }
-
-    .ci .sub {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--p);
-      min-width: 40px;
-      text-align: right
-    }
-
-    #cart-foot {
-      padding: 10px 12px;
-      border-top: 1px solid var(--b)
-    }
-
-    .trow {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-      font-size: 12px;
-      color: var(--t2)
-    }
-
-    .trow .v {
-      font-weight: 600;
-      color: var(--t)
-    }
-
-    .tgrand {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-top: 1px solid var(--b);
-      margin-top: 4px
-    }
-
-    .tgrand .l {
-      font-size: 14px;
-      font-weight: 600
-    }
-
-    .tgrand .v {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--p)
-    }
-
-    #pay-btns {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 4px;
-      margin: 8px 0
-    }
-
-    .pay-b {
-      padding: 6px 2px;
-      border-radius: 6px;
-      border: 1.5px solid var(--b);
-      background: var(--c);
-      color: var(--t2);
-      font-family: inherit;
-      font-size: 11px;
-      cursor: pointer;
-      transition: .15s;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px
-    }
-
-    .pay-b span {
-      font-size: 16px
-    }
-
-    .pay-b:hover,
-    .pay-b.active {
-      border-color: var(--p);
-      background: rgba(255, 107, 53, .15);
-      color: var(--p)
-    }
-
-    #checkout-btn {
-      width: 100%;
-      padding: 12px;
-      background: var(--p);
-      border: none;
-      border-radius: 8px;
-      color: #fff;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: .2s
-    }
-
-    #checkout-btn:hover {
-      background: var(--pd)
-    }
-
-    #checkout-btn:disabled {
-      background: var(--mid);
-      cursor: not-allowed
-    }
-
-    .disc-row {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 6px
-    }
-
-    .disc-row input {
-      flex: 1;
-      background: var(--c);
-      border: 1px solid var(--b);
-      border-radius: 6px;
-      padding: 5px 8px;
-      color: var(--t);
-      font-size: 12px;
-      width: 60px
-    }
-
-    .disc-row input:focus {
-      outline: none;
-      border-color: var(--p)
-    }
-
-    .disc-row button {
-      padding: 4px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--b);
-      background: var(--c);
-      color: var(--w);
-      font-size: 10px;
-      font-family: inherit;
-      cursor: pointer
-    }
-
-    .disc-row button:hover {
-      background: rgba(243, 156, 18, .15)
-    }
-
-    /* Inner pages */
-    .ipage {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-      overflow: hidden
-    }
-
-    .ipage.active {
-      display: flex
-    }
-
-    .phdr {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-      flex-shrink: 0
-    }
-
-    .ptitle {
-      font-size: 18px;
-      font-weight: 700
-    }
-
-    .btn-p {
-      padding: 8px 16px;
-      background: var(--p);
-      border: none;
-      border-radius: 8px;
-      color: #fff;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: .2s
-    }
-
-    .btn-p:hover {
-      background: var(--pd)
-    }
-
-    .btn-s {
-      padding: 7px 12px;
-      background: var(--c);
-      border: 1px solid var(--b);
-      border-radius: 8px;
-      color: var(--t);
-      font-family: inherit;
-      font-size: 12px;
-      cursor: pointer;
-      transition: .2s
-    }
-
-    .btn-s:hover {
-      background: var(--c2)
-    }
-
-    .twrap {
-      flex: 1;
-      overflow-y: auto;
-      border-radius: var(--rad);
-      border: 1px solid var(--b)
-    }
-
-    .twrap::-webkit-scrollbar {
-      width: 4px
-    }
-
-    .twrap::-webkit-scrollbar-thumb {
-      background: var(--mid);
-      border-radius: 3px
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse
-    }
-
-    th {
-      background: var(--c2);
-      padding: 9px 12px;
-      text-align: left;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--t2);
-      position: sticky;
-      top: 0;
-      z-index: 1
-    }
-
-    td {
-      padding: 8px 12px;
-      border-top: 1px solid var(--b);
-      font-size: 12px
-    }
-
-    tr:hover td {
-      background: rgba(255, 255, 255, .02)
-    }
-
-    .bdg {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: 600
-    }
-
-    .bdg-g {
-      background: rgba(46, 204, 113, .15);
-      color: var(--g)
-    }
-
-    .bdg-r {
-      background: rgba(231, 76, 60, .15);
-      color: var(--r)
-    }
-
-    .bdg-o {
-      background: rgba(255, 107, 53, .15);
-      color: var(--p)
-    }
-
-    .bdg-w {
-      background: rgba(243, 156, 18, .15);
-      color: var(--w)
-    }
-
-    .bdg-b {
-      background: rgba(15, 52, 96, .3);
-      color: var(--t2)
-    }
-
-    .abtn {
-      padding: 3px 8px;
-      border-radius: 5px;
-      border: 1px solid var(--b);
-      background: transparent;
-      color: var(--t2);
-      font-size: 11px;
-      cursor: pointer;
-      font-family: inherit;
-      margin-right: 3px
-    }
-
-    .abtn:hover {
-      background: var(--c2);
-      color: var(--t)
-    }
-
-    .abtn.del:hover {
-      background: rgba(231, 76, 60, .15);
-      color: var(--r)
-    }
-
-    /* Tables page */
-    .tbl-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 12px;
-      padding: 4px
-    }
-
-    .tbl-card {
-      background: var(--c);
-      border: 2px solid var(--b);
-      border-radius: var(--rad);
-      padding: 16px;
-      text-align: center;
-      cursor: pointer;
-      transition: .2s;
-      min-height: 100px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px
-    }
-
-    .tbl-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, .3)
-    }
-
-    .tbl-card.avail {
-      border-color: var(--g)
-    }
-
-    .tbl-card.reserved {
-      border-color: var(--w);
-      background: rgba(243, 156, 18, .12)
-    }
-
-    .tbl-card.arrived {
-      border-color: #3498DB;
-      background: rgba(52, 152, 219, .12)
-    }
-
-    .tbl-card.tbl-ordering {
-      border-color: #9B59B6;
-      background: rgba(155, 89, 182, .08)
-    }
-
-    .tbl-card.occupied {
-      border-color: var(--p);
-      background: rgba(255, 107, 53, .08)
-    }
-
-    .tbl-card .tno {
-      font-size: 24px;
-      font-weight: 700
-    }
-
-    .tbl-card .tst {
-      font-size: 11px
-    }
-
-    .tbl-card .tamt {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--p)
-    }
-
-    /* Report */
-    .stat-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 10px;
-      margin-bottom: 16px
-    }
-
-    .stat-c {
-      background: var(--c);
-      border: 1px solid var(--b);
-      border-radius: var(--rad);
-      padding: 14px 16px
-    }
-
-    .stat-c .lbl {
-      font-size: 11px;
-      color: var(--t2);
-      margin-bottom: 6px
-    }
-
-    .stat-c .val {
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--p)
-    }
-
-    .stat-c .val.sm {
-      font-size: 18px
-    }
-
-    .rprt-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px
-    }
-
-    @media(max-width:700px) {
-      .rprt-grid {
-        grid-template-columns: 1fr
-      }
-    }
-
-    .sec-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--t2);
-      margin-bottom: 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--b)
-    }
-
-    /* Modal */
-    .modal-ov {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, .6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 16px;
-      backdrop-filter: blur(3px)
-    }
-
-    .modal {
-      background: var(--dk2);
-      border: 1px solid var(--b);
-      border-radius: 14px;
-      padding: 24px;
-      min-width: 300px;
-      max-width: 400px;
-      width: 100%;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, .5)
-    }
-
-    .modal h3 {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 16px
-    }
-
-    .fg {
-      margin-bottom: 12px
-    }
-
-    .fg label {
-      display: block;
-      font-size: 12px;
-      color: var(--t2);
-      margin-bottom: 4px
-    }
-
-    .fg input,
-    .fg select,
-    .fg textarea {
-      width: 100%;
-      background: var(--c);
-      border: 1px solid var(--b);
-      border-radius: 8px;
-      padding: 9px 10px;
-      color: var(--t);
-      font-family: inherit;
-      font-size: 13px
-    }
-
-    .fg input:focus,
-    .fg select:focus,
-    .fg textarea:focus {
-      outline: none;
-      border-color: var(--p)
-    }
-
-    .fg textarea {
-      resize: vertical;
-      min-height: 60px
-    }
-
-    .macts {
-      display: flex;
-      gap: 8px;
-      margin-top: 16px
-    }
-
-    .macts button {
-      flex: 1;
-      padding: 10px;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none
-    }
-
-    .btn-cancel {
-      background: var(--c);
-      color: var(--t2)
-    }
-
-    .btn-save {
-      background: var(--p);
-      color: #fff
-    }
-
-    /* Receipt */
-    #receipt-box {
-      background: #fff;
-      color: #111;
-      border-radius: 8px;
-      padding: 16px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px;
-      line-height: 1.6;
-      white-space: pre;
-      max-height: 55vh;
-      overflow-y: auto;
-      margin-bottom: 12px
-    }
-
-    /* Toast */
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(16px);
-      background: var(--c2);
-      border: 1px solid var(--b);
-      border-radius: 16px;
-      padding: 8px 18px;
-      font-size: 13px;
-      opacity: 0;
-      transition: .3s;
-      z-index: 999;
-      pointer-events: none;
-      white-space: nowrap
-    }
-
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0)
-    }
-
-    #toast.ok {
-      border-color: var(--g);
-      color: var(--g)
-    }
-
-    #toast.err {
-      border-color: var(--r);
-      color: var(--r)
-    }
-
-    /* Spice modal */
-    .spice-btns {
-      display: flex;
-      gap: 8px;
-      margin: 12px 0
-    }
-
-    .spice-b {
-      flex: 1;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1.5px solid var(--b);
-      background: var(--c);
-      color: var(--t);
-      font-family: inherit;
-      font-size: 12px;
-      cursor: pointer;
-      text-align: center;
-      transition: .15s
-    }
-
-    .spice-b:hover,
-    .spice-b.active {
-      border-color: var(--p);
-      background: rgba(255, 107, 53, .12)
-    }
-
-    /* Responsive */
-    @media(max-width:768px) {
-      #pos-right {
-        width: 100%;
-        position: fixed;
-        bottom: 0;
-        height: 50vh;
-        z-index: 50;
-        display: none
-      }
-
-      #pos-right.open {
-        display: flex
-      }
-
-      .tbl-grid {
-        grid-template-columns: repeat(3, 1fr)
-      }
-
-      .tab-btn {
-        font-size: 11px;
-        padding: 5px 10px
-      }
-
-      .rprt-grid {
-        grid-template-columns: 1fr
-      }
-
-      #prod-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr))
-      }
-    }
-
-    /* Settings */
-    .settings-form {
-      max-width: 400px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px
-    }
-
-    .settings-form hr {
-      border-color: var(--b);
-      margin: 4px 0
-    }
-  </style>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
-    rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>POS - ลาบบ้านสวน</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+:root {
+  --p: #FF6B35;
+  --pd: #E85A24;
+  --dk: #0F0F1A;
+  --dk2: #161628;
+  --mid: #1C1C32;
+  --c: #1E2A45;
+  --c2: #253352;
+  --t: #E8EDF5;
+  --t2: #9BABC8;
+  --g: #2ECC71;
+  --r: #E74C3C;
+  --w: #F39C12;
+  --b: rgba(255,255,255,.08);
+  --rad: 14px;
+  --glow: 0 0 20px rgba(255,107,53,.15);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent }
+
+body {
+  font-family:'Sarabun',system-ui,sans-serif;
+  background:var(--dk);
+  color:var(--t);
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* ══════════════ LOGIN ══════════════ */
+#login {
+  position:fixed; inset:0; background:var(--dk); z-index:200;
+  display:flex; align-items:center; justify-content:center;
+}
+#login.hidden { display:none }
+
+.login-box {
+  text-align:center; width:340px;
+  background:var(--dk2);
+  border-radius:24px;
+  padding:40px 32px;
+  border:1px solid var(--b);
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.login-box .login-logo { font-size:56px; margin-bottom:12px; filter:drop-shadow(0 4px 12px rgba(255,107,53,.3)) }
+.login-box h1 { font-size:26px; color:var(--p); margin-bottom:4px; font-weight:700 }
+.login-box p { color:var(--t2); margin-bottom:24px; font-size:14px }
+.pin-dots { display:flex; gap:14px; justify-content:center; margin-bottom:24px }
+.pin-dot {
+  width:18px; height:18px; border-radius:50%;
+  border:2px solid var(--t2);
+  transition:.25s ease;
+}
+.pin-dot.filled {
+  background:var(--p); border-color:var(--p);
+  box-shadow:0 0 12px rgba(255,107,53,.4);
+  transform:scale(1.1);
+}
+.pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:260px; margin:0 auto }
+.pin-btn {
+  padding:16px; border-radius:14px; border:1px solid var(--b);
+  background:var(--c); color:var(--t); font-size:22px; font-weight:600;
+  cursor:pointer; transition:.2s; font-family:inherit;
+}
+.pin-btn:hover { background:var(--c2); border-color:var(--p); transform:scale(1.03) }
+.pin-btn:active { transform:scale(.95) }
+.pin-btn.del { font-size:14px; color:var(--r) }
+.pin-btn.ok { background:linear-gradient(135deg,var(--p),var(--pd)); color:#fff; border-color:var(--p) }
+.pin-err { color:var(--r); font-size:13px; min-height:20px; margin-top:14px }
+
+/* ══════════════ TOPBAR ══════════════ */
+#topbar {
+  background:linear-gradient(180deg,var(--dk2),var(--mid));
+  border-bottom:1px solid var(--b);
+  display:flex; align-items:center;
+  padding:0 16px; height:56px; gap:6px; flex-shrink:0;
+}
+.logo { font-size:18px; font-weight:700; color:var(--p); margin-right:12px; white-space:nowrap }
+.logo span { color:var(--t); font-weight:400 }
+
+.tab-btn {
+  padding:7px 16px; border-radius:20px; border:none;
+  background:transparent; color:var(--t2);
+  font-family:inherit; font-size:13px; font-weight:500;
+  cursor:pointer; transition:.25s; white-space:nowrap;
+}
+.tab-btn:hover { color:var(--t); background:rgba(255,255,255,.06) }
+.tab-btn.active { background:linear-gradient(135deg,var(--p),var(--pd)); color:#fff; box-shadow:var(--glow) }
+
+#clock { margin-left:auto; font-size:12px; color:var(--t2); white-space:nowrap }
+#staff-name { font-size:12px; color:var(--p); margin-left:8px; font-weight:600 }
+
+/* ══════════════ PAGES ══════════════ */
+.page { display:none; flex:1; overflow:hidden }
+.page.active { display:flex }
+
+/* ══════════════ POS LAYOUT ══════════════ */
+#page-pos { flex-direction:row }
+#pos-left { flex:1; display:flex; flex-direction:column; overflow:hidden; border-right:1px solid var(--b) }
+
+#cat-bar {
+  display:flex; gap:6px; padding:12px 14px;
+  overflow-x:auto; border-bottom:1px solid var(--b); flex-shrink:0;
+  background:var(--dk2);
+}
+#cat-bar::-webkit-scrollbar { height:3px }
+#cat-bar::-webkit-scrollbar-thumb { background:var(--p); border-radius:3px }
+
+.cat-pill {
+  padding:6px 16px; border-radius:20px;
+  border:1.5px solid var(--b); background:transparent;
+  color:var(--t2); font-family:inherit; font-size:12px;
+  cursor:pointer; transition:.25s; white-space:nowrap;
+}
+.cat-pill:hover, .cat-pill.active {
+  border-color:var(--p); color:#fff;
+  background:linear-gradient(135deg,rgba(255,107,53,.2),rgba(255,107,53,.08));
+}
+
+#search-bar { padding:10px 14px; border-bottom:1px solid var(--b); flex-shrink:0; background:var(--dk2) }
+#search-bar input {
+  width:100%; background:var(--c); border:1px solid var(--b);
+  border-radius:10px; padding:10px 14px; color:var(--t);
+  font-family:inherit; font-size:13px; transition:border .2s;
+}
+#search-bar input:focus { outline:none; border-color:var(--p); box-shadow:0 0 0 3px rgba(255,107,53,.15) }
+
+/* ═══════ PRODUCT GRID (IMAGE CARDS) ═══════ */
+#prod-grid {
+  flex:1; overflow-y:auto; padding:14px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
+  gap:10px; align-content:start;
+}
+#prod-grid::-webkit-scrollbar { width:4px }
+#prod-grid::-webkit-scrollbar-thumb { background:var(--mid); border-radius:3px }
+
+.pc {
+  background:var(--dk2); border:1px solid var(--b);
+  border-radius:var(--rad); cursor:pointer;
+  transition:.2s ease; display:flex; flex-direction:column;
+  overflow:hidden; position:relative;
+}
+.pc:hover {
+  border-color:var(--p); transform:translateY(-3px);
+  box-shadow:0 8px 25px rgba(0,0,0,.4), var(--glow);
+}
+.pc:active { transform:scale(.97) }
+
+.pc .pc-img {
+  width:100%; height:110px;
+  object-fit:cover; display:block;
+  background:var(--c);
+  transition:transform .3s;
+}
+.pc:hover .pc-img { transform:scale(1.05) }
+.pc .pc-img-wrap {
+  overflow:hidden; position:relative;
+  border-radius:var(--rad) var(--rad) 0 0;
+  background:var(--c);
+  height:110px;
+}
+
+.pc .em {
+  font-size:44px; text-align:center; padding:20px 0 8px;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));
+  height:110px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,var(--c),var(--c2));
+}
+
+.pc .pc-body { padding:10px 10px 12px; text-align:center }
+.pc .nm { font-size:12px; font-weight:600; line-height:1.3; min-height:32px; display:flex; align-items:center; justify-content:center }
+.pc .pr { font-size:16px; font-weight:700; color:var(--p); margin-top:2px }
+.pc .st { font-size:10px; color:var(--t2); margin-top:1px }
+
+.pc .badge {
+  position:absolute; top:6px; right:6px;
+  background:var(--p); color:#fff;
+  font-size:11px; font-weight:700;
+  border-radius:50%; width:22px; height:22px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 8px rgba(255,107,53,.5);
+  z-index:2;
+}
+.pc.out { opacity:.3; pointer-events:none }
+
+/* Skeleton loading */
+@keyframes shimmer {
+  0% { background-position:-200px 0 }
+  100% { background-position:200px 0 }
+}
+.skeleton {
+  background:linear-gradient(90deg,var(--c) 25%,var(--c2) 50%,var(--c) 75%);
+  background-size:400px 100%;
+  animation:shimmer 1.5s infinite;
+}
+
+/* ══════════════ CART ══════════════ */
+#pos-right {
+  width:320px; display:flex; flex-direction:column;
+  background:var(--dk2); flex-shrink:0;
+  border-left:1px solid var(--b);
+}
+
+.cart-hd {
+  padding:14px 14px; border-bottom:1px solid var(--b);
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(180deg,var(--mid),var(--dk2));
+}
+.cart-hd h3 { font-size:15px; font-weight:700 }
+.cart-hd select, .cart-hd button {
+  background:var(--c); border:1px solid var(--b);
+  color:var(--t2); border-radius:8px;
+  padding:4px 10px; font-size:11px;
+  font-family:inherit; cursor:pointer; transition:.2s;
+}
+.cart-hd select:hover, .cart-hd button:hover { border-color:var(--p) }
+
+#cart-items { flex:1; overflow-y:auto; padding:8px }
+#cart-items::-webkit-scrollbar { width:3px }
+#cart-items::-webkit-scrollbar-thumb { background:var(--mid); border-radius:3px }
+
+.cart-empty {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; height:100%;
+  color:var(--t2); font-size:13px; gap:8px;
+}
+.cart-empty .ic { font-size:40px; opacity:.2 }
+
+.ci {
+  display:flex; align-items:center; gap:8px;
+  padding:10px; border-radius:10px;
+  background:var(--c); margin-bottom:6px;
+  border:1px solid var(--b); transition:border .2s;
+}
+.ci:hover { border-color:rgba(255,107,53,.3) }
+.ci .info { flex:1; min-width:0 }
+.ci .nm { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.ci .meta { font-size:10px; color:var(--t2) }
+.ci .ctrls { display:flex; align-items:center; gap:5px }
+.qb {
+  width:24px; height:24px; border-radius:6px;
+  border:1px solid var(--b); background:var(--c2);
+  color:var(--t); font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:.15s;
+}
+.qb:hover { background:var(--p); border-color:var(--p); color:#fff }
+.ci .qty { font-size:13px; font-weight:700; min-width:18px; text-align:center }
+.ci .sub { font-size:12px; font-weight:700; color:var(--p); min-width:44px; text-align:right }
+
+#cart-foot { padding:12px 14px; border-top:1px solid var(--b); background:var(--dk2) }
+.trow { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; font-size:12px; color:var(--t2) }
+.trow .v { font-weight:600; color:var(--t) }
+.tgrand {
+  display:flex; justify-content:space-between;
+  padding:10px 0; border-top:1px solid var(--b); margin-top:6px;
+}
+.tgrand .l { font-size:14px; font-weight:600 }
+.tgrand .v { font-size:22px; font-weight:700; color:var(--p) }
+
+#pay-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin:10px 0 }
+.pay-b {
+  padding:8px 2px; border-radius:10px;
+  border:1.5px solid var(--b); background:var(--c);
+  color:var(--t2); font-family:inherit; font-size:11px;
+  cursor:pointer; transition:.2s;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+}
+.pay-b span { font-size:18px }
+.pay-b:hover, .pay-b.active {
+  border-color:var(--p);
+  background:rgba(255,107,53,.1); color:var(--p);
+}
+
+#checkout-btn {
+  width:100%; padding:14px;
+  background:linear-gradient(135deg,var(--p),var(--pd));
+  border:none; border-radius:12px;
+  color:#fff; font-family:inherit; font-size:15px; font-weight:700;
+  cursor:pointer; transition:.2s;
+  box-shadow:0 4px 15px rgba(255,107,53,.3);
+}
+#checkout-btn:hover { box-shadow:0 6px 20px rgba(255,107,53,.4); transform:translateY(-1px) }
+#checkout-btn:disabled { background:var(--mid); cursor:not-allowed; box-shadow:none; transform:none }
+
+.disc-row { display:flex; gap:6px; margin-bottom:8px }
+.disc-row input {
+  flex:1; background:var(--c); border:1px solid var(--b);
+  border-radius:8px; padding:6px 10px; color:var(--t); font-size:12px; width:60px;
+}
+.disc-row input:focus { outline:none; border-color:var(--p) }
+.disc-row button {
+  padding:5px 10px; border-radius:8px; border:1px solid var(--b);
+  background:var(--c); color:var(--w); font-size:10px; font-family:inherit; cursor:pointer;
+}
+.disc-row button:hover { background:rgba(243,156,18,.15) }
+
+/* ══════════════ INNER PAGES ══════════════ */
+.ipage { flex:1; display:flex; flex-direction:column; padding:16px; overflow:hidden }
+.phdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-shrink:0; flex-wrap:wrap; gap:8px }
+.ptitle { font-size:20px; font-weight:700 }
+
+.btn-p {
+  padding:9px 20px; background:linear-gradient(135deg,var(--p),var(--pd));
+  border:none; border-radius:10px; color:#fff;
+  font-family:inherit; font-size:13px; font-weight:600;
+  cursor:pointer; transition:.2s; box-shadow:0 3px 12px rgba(255,107,53,.25);
+}
+.btn-p:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(255,107,53,.35) }
+
+.btn-s {
+  padding:8px 14px; background:var(--c);
+  border:1px solid var(--b); border-radius:10px;
+  color:var(--t); font-family:inherit; font-size:12px;
+  cursor:pointer; transition:.2s;
+}
+.btn-s:hover { background:var(--c2); border-color:rgba(255,255,255,.15) }
+
+.twrap { flex:1; overflow-y:auto; border-radius:var(--rad); border:1px solid var(--b) }
+.twrap::-webkit-scrollbar { width:4px }
+.twrap::-webkit-scrollbar-thumb { background:var(--mid); border-radius:3px }
+
+table { width:100%; border-collapse:collapse }
+th {
+  background:var(--c2); padding:10px 14px; text-align:left;
+  font-size:12px; font-weight:600; color:var(--t2);
+  position:sticky; top:0; z-index:1;
+}
+td { padding:9px 14px; border-top:1px solid var(--b); font-size:12px }
+tr:hover td { background:rgba(255,255,255,.02) }
+
+.bdg { display:inline-block; padding:3px 10px; border-radius:14px; font-size:10px; font-weight:600 }
+.bdg-g { background:rgba(46,204,113,.15); color:var(--g) }
+.bdg-r { background:rgba(231,76,60,.15); color:var(--r) }
+.bdg-o { background:rgba(255,107,53,.15); color:var(--p) }
+.bdg-w { background:rgba(243,156,18,.15); color:var(--w) }
+.bdg-b { background:rgba(15,52,96,.3); color:var(--t2) }
+
+.abtn {
+  padding:4px 10px; border-radius:6px; border:1px solid var(--b);
+  background:transparent; color:var(--t2); font-size:11px;
+  cursor:pointer; font-family:inherit; margin-right:4px; transition:.2s;
+}
+.abtn:hover { background:var(--c2); color:var(--t) }
+.abtn.del:hover { background:rgba(231,76,60,.15); color:var(--r) }
+
+/* ══════════════ TABLES PAGE ══════════════ */
+.tbl-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; padding:4px }
+@media(max-width:1200px) { .tbl-grid { grid-template-columns:repeat(4,1fr) } }
+@media(max-width:992px)  { .tbl-grid { grid-template-columns:repeat(3,1fr) } }
+@media(max-width:700px)  { .tbl-grid { grid-template-columns:repeat(2,1fr) } }
+@media(max-width:420px)  { .tbl-grid { grid-template-columns:1fr } }
+.tbl-card {
+  background: linear-gradient(145deg, var(--c), var(--dk2));
+  border: 1px solid var(--b);
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.tbl-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 4px;
+  background: var(--tc, var(--b));
+}
+.tbl-card:hover { 
+  transform: translateY(-4px); 
+  box-shadow: 0 10px 25px rgba(0,0,0,.4);
+  border-color: rgba(255,255,255,0.1);
+}
+.tbl-card-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+.tbl-icon-wrap {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; border: 1px solid rgba(255,255,255,0.05);
+}
+.tno-wrap { text-align: right; }
+.tno { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+.tbl-label { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; display: inline-block; background: rgba(255,255,255,0.05); }
+
+.tbl-card-bottom { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; margin-top: auto; }
+.tbl-time { font-size: 12px; color: var(--t2); display:flex; align-items:center; }
+.tbl-time::before { content: '⏱️'; font-size: 10px; margin-right: 6px; opacity: 0.6; }
+.tbl-amt { font-size: 16px; font-weight: 700; color: var(--tc); margin-top: 2px; text-align: right; }
+
+.tbl-card.reserved { background: linear-gradient(145deg, rgba(243,156,18,.08), var(--dk2)); }
+.tbl-card.arrived { background: linear-gradient(145deg, rgba(52,152,219,.08), var(--dk2)); }
+.tbl-card.tbl-ordering { background: linear-gradient(145deg, rgba(155,89,182,.08), var(--dk2)); }
+.tbl-card.tbl-new { background: linear-gradient(145deg, rgba(243,156,18,.08), var(--dk2)); }
+.tbl-card.tbl-cook { background: linear-gradient(145deg, rgba(230,126,34,.08), var(--dk2)); }
+.tbl-card.tbl-served { background: linear-gradient(145deg, rgba(52,152,219,.08), var(--dk2)); }
+
+/* ══════════════ REPORTS ══════════════ */
+.stat-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; margin-bottom:18px }
+.stat-c {
+  background:var(--dk2); border:1px solid var(--b);
+  border-radius:var(--rad); padding:16px 18px;
+}
+.stat-c .lbl { font-size:11px; color:var(--t2); margin-bottom:6px }
+.stat-c .val { font-size:24px; font-weight:700; color:var(--p) }
+.stat-c .val.sm { font-size:18px }
+.rprt-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px }
+@media(max-width:700px) { .rprt-grid { grid-template-columns:1fr } }
+.sec-title { font-size:13px; font-weight:600; color:var(--t2); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--b) }
+
+/* ══════════════ MODALS ══════════════ */
+.modal-ov {
+  position:fixed; inset:0; background:rgba(0,0,0,.65);
+  display:flex; align-items:center; justify-content:center;
+  z-index:100; padding:16px; backdrop-filter:blur(4px);
+}
+.cmodal {
+  background:var(--dk2); border:1px solid var(--b);
+  border-radius:18px; padding:28px;
+  min-width:300px; max-width:420px; width:100%;
+  box-shadow:0 12px 40px rgba(0,0,0,.6);
+  animation:modalIn .25s ease;
+}
+@keyframes modalIn { from { opacity:0; transform:scale(.95) translateY(10px) } to { opacity:1; transform:scale(1) translateY(0) } }
+
+.cmodal h3 { font-size:17px; font-weight:700; margin-bottom:18px }
+.fg { margin-bottom:14px }
+.fg label { display:block; font-size:12px; color:var(--t2); margin-bottom:5px; font-weight:500 }
+.fg input, .fg select, .fg textarea {
+  width:100%; background:var(--c); border:1px solid var(--b);
+  border-radius:10px; padding:10px 12px; color:var(--t);
+  font-family:inherit; font-size:13px; transition:border .2s;
+}
+.fg input:focus, .fg select:focus, .fg textarea:focus { outline:none; border-color:var(--p); box-shadow:0 0 0 3px rgba(255,107,53,.1) }
+.fg textarea { resize:vertical; min-height:60px }
+
+.macts { display:flex; gap:10px; margin-top:18px }
+.macts button {
+  flex:1; padding:12px; border-radius:10px;
+  font-family:inherit; font-size:13px; font-weight:600;
+  cursor:pointer; border:none; transition:.2s;
+}
+.btn-cancel { background:var(--c); color:var(--t2) }
+.btn-cancel:hover { background:var(--c2) }
+.btn-save { background:linear-gradient(135deg,var(--p),var(--pd)); color:#fff }
+.btn-save:hover { box-shadow:0 4px 15px rgba(255,107,53,.3) }
+
+/* ══════════════ RECEIPT ══════════════ */
+#receipt-box {
+  background:#fff; color:#111; border-radius:10px;
+  padding:18px; font-family:'IBM Plex Mono',monospace;
+  font-size:11px; line-height:1.6; white-space:pre;
+  max-height:55vh; overflow-y:auto; margin-bottom:14px;
+}
+
+/* ══════════════ TOAST ══════════════ */
+#toast {
+  position:fixed; bottom:28px; left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--dk2); border:1px solid var(--b);
+  border-radius:18px; padding:10px 22px;
+  font-size:13px; font-weight:500;
+  opacity:0; transition:.3s ease;
+  z-index:999; pointer-events:none; white-space:nowrap;
+  box-shadow:0 8px 30px rgba(0,0,0,.4);
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0) }
+#toast.ok { border-color:var(--g); color:var(--g) }
+#toast.err { border-color:var(--r); color:var(--r) }
+
+/* ══════════════ SPICE MODAL ══════════════ */
+.spice-btns { display:flex; gap:8px; margin:14px 0 }
+.spice-b {
+  flex:1; padding:12px 6px; border-radius:10px;
+  border:1.5px solid var(--b); background:var(--c);
+  color:var(--t); font-family:inherit; font-size:12px;
+  cursor:pointer; text-align:center; transition:.2s;
+}
+.spice-b:hover, .spice-b.active { border-color:var(--p); background:rgba(255,107,53,.1); color:var(--p) }
+
+/* ══════════════ SETTINGS ══════════════ */
+.settings-form { max-width:440px; display:flex; flex-direction:column; gap:14px }
+.settings-form hr { border-color:var(--b); margin:4px 0 }
+
+/* ══════════════ RESPONSIVE ══════════════ */
+@media(max-width:768px) {
+  #pos-right { width:100%; position:fixed; bottom:0; height:50vh; z-index:50; display:none }
+  #pos-right.open { display:flex }
+  .tbl-grid { grid-template-columns:repeat(3,1fr) }
+  .tab-btn { font-size:11px; padding:5px 10px }
+  .rprt-grid { grid-template-columns:1fr }
+  #prod-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)) }
+}
+
+/* ══════════════ NOTIFICATION BADGE PULSE ══════════════ */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
 
 </head>
-
 <body>
-  <!-- LOGIN -->
+<!-- LOGIN -->
   <div id="login">
     <div class="login-box">
-      <div style="font-size:48px;margin-bottom:8px">🍜</div>
+      <div class="login-logo">🍜</div>
       <h1>ลาบบ้านสวน</h1>
       <p>กรุณาใส่ PIN เพื่อเข้าสู่ระบบ</p>
       <div class="pin-dots">
@@ -1217,7 +600,10 @@
           <button class="pay-b" onclick="selPay(this,'โอน')"><span>📱</span>โอน/QR</button>
           <button class="pay-b" onclick="selPay(this,'บัตร')"><span>💳</span>บัตร</button>
         </div>
-        <button id="checkout-btn" onclick="checkout()" disabled>📋 สั่งอาหาร</button>
+        <div style="display:flex;gap:8px">
+          <button id="send-kitchen-btn" onclick="sendToKitchen()" disabled style="flex:1;background:#E67E22;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">🔥 ส่งครัว</button>
+          <button id="checkout-btn" onclick="checkout()" disabled style="flex:1">ชำระเงิน</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1243,7 +629,7 @@
 
   <!-- TABLE DETAIL MODAL -->
   <div id="tbl-modal" class="modal-ov" style="display:none">
-    <div class="modal" style="max-width:420px">
+    <div class="cmodal" style="max-width:420px">
       <h3 id="tbl-modal-title">โต๊ะ 1</h3>
       <div id="tbl-modal-body"></div>
       <div class="macts" id="tbl-modal-acts"></div>
@@ -1251,7 +637,7 @@
   </div>
 
   <div id="reserve-modal" class="modal-ov" style="display:none">
-    <div class="modal">
+    <div class="cmodal">
       <h3>🪑 จองโต๊ะ</h3>
       <input type="hidden" id="res-table-no">
       <div class="fg"><label>วันที่</label><input type="date" id="res-date"></div>
@@ -1277,7 +663,7 @@
       <div class="twrap">
         <table>
           <thead>
-            <tr>
+          <tr>
               <th>ID</th>
               <th>ชื่อ</th>
               <th>หมวด</th>
@@ -1338,7 +724,7 @@
       <div class="stat-cards" id="rpt-stats"></div>
       <div class="rprt-grid">
         <div>
-          <div class="sec-title">🏆 เมนูขายดี</div>
+          <div class="sec-title">🏆 เมนูขายดี (Top 10)</div>
           <div class="twrap" style="max-height:260px">
             <table>
               <thead>
@@ -1355,9 +741,23 @@
         <div>
           <div class="sec-title">💳 ช่องทางชำระ</div>
           <div id="pay-chart"></div>
-          <div class="sec-title" style="margin-top:16px">📅 ยอดรายวัน</div>
+          <div class="sec-title" style="margin-top:16px">🍽️ ประเภทออเดอร์</div>
+          <div id="type-chart"></div>
+        </div>
+      </div>
+      <div class="rprt-grid" style="margin-top:16px">
+        <div>
+          <div class="sec-title">⏰ ยอดขายรายชั่วโมง</div>
+          <div id="hourly-chart"></div>
+        </div>
+        <div>
+          <div class="sec-title">📅 ยอดรายวัน</div>
           <div id="daily-chart"></div>
         </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-s" onclick="exportCSV()" style="font-size:12px">📥 Export CSV</button>
+        <button class="btn-s" onclick="printReport()" style="font-size:12px">🖨️ พิมพ์รายงาน</button>
       </div>
     </div>
   </div>
@@ -1390,27 +790,24 @@
           <div style="font-size:11px;color:var(--t2);margin-top:4px">ลบ orders ทดสอบของวันนี้ทั้งหมด + reset counter</div>
         </div>
         <hr>
-        <div style="margin-top:12px;padding:12px;border:1px solid rgba(52,152,219,0.3);border-radius:8px;background:rgba(52,152,219,0.05)">
-          <div style="font-size:13px;font-weight:600;color:#3498DB;margin-bottom:8px">🖼️ จัดการรูปอาหาร</div>
-          <button style="background:#3498DB;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px" onclick="google.script.run.withSuccessHandler(function(r){alert('โฟลเดอร์พร้อม!\n\nเปิดลิงก์นี้เพื่ออัปโหลดรูป:\n'+r.folderUrl+'\n\nตั้งชื่อไฟล์ตาม product_id เช่น M001.png')}).setupFoodImageFolder()">📁 สร้างโฟลเดอร์</button>
-          <button style="background:#9B59B6;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;margin-left:8px" onclick="google.script.run.withSuccessHandler(function(r){if(r.success){alert('✅ จับคู่รูปสำเร็จ!\n\nจับคู่ได้: '+r.matched+' รูป'+(r.skipped.length?'\nไม่พบสินค้า: '+r.skipped.join(', '):''))}else{alert('❌ '+r.message)}}).syncFoodImages()">🔗 Sync รูปอาหาร</button>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">อัปโหลดรูปตั้งชื่อ M001.png, M002.png ฯลฯ แล้วกด Sync</div>
+        <!-- QR Code Generator สำหรับโต๊ะ -->
+        <div style="margin-top:8px">
+          <div style="font-size:15px;font-weight:700;margin-bottom:12px">📱 QR Code เมนูโต๊ะ</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:12px">สร้าง QR Code สำหรับให้ลูกค้าสแกนดูเมนูและสั่งอาหารเอง</div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+            <button class="btn-p" onclick="generateAllTableQR()" style="padding:8px 18px;font-size:13px">📱 สร้าง QR ทุกโต๊ะ</button>
+            <button class="btn-s" onclick="printAllQR()" style="padding:8px 14px;font-size:12px">🖨️ พิมพ์ทั้งหมด</button>
+          </div>
+          <div id="qr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"></div>
         </div>
-        <hr>
-        <div style="margin-top:12px;padding:12px;border:1px solid rgba(46,204,113,0.3);border-radius:8px;background:rgba(46,204,113,0.05)">
-          <div style="font-size:13px;font-weight:600;color:#2ECC71;margin-bottom:8px">📱 QR Code สั่งอาหาร</div>
-          <button style="background:#2ECC71;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px" onclick="showQRCodes()">🔗 สร้าง QR Code ทุกโต๊ะ</button>
-          <div id="qr-codes-area" style="margin-top:8px"></div>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">สร้าง QR Code ให้ลูกค้าสแกนสั่งอาหาร</div>
-        </div>
-        <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v2.1 Pro</div>
+        <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v3.1 Pro</div>
       </div>
     </div>
   </div>
 
   <!-- MODALS -->
   <div id="spice-modal" class="modal-ov" style="display:none">
-    <div class="modal">
+    <div class="cmodal">
       <h3 id="spice-title">เลือกระดับความเผ็ด</h3>
       <div class="spice-btns">
         <button class="spice-b" onclick="pickSpice('ไม่เผ็ด')">😊<br>ไม่เผ็ด</button>
@@ -1428,7 +825,7 @@
   </div>
 
   <div id="prod-modal" class="modal-ov" style="display:none">
-    <div class="modal">
+    <div class="cmodal">
       <h3 id="pm-title">เพิ่มสินค้า</h3>
       <input type="hidden" id="pm-id">
       <div class="fg"><label>ชื่อสินค้า *</label><input type="text" id="pm-name"></div>
@@ -1454,7 +851,7 @@
   </div>
 
   <div id="receipt-modal" class="modal-ov" style="display:none">
-    <div class="modal" style="max-width:340px">
+    <div class="cmodal" style="max-width:340px">
       <h3>🧾 ใบเสร็จ</h3>
       <div id="receipt-box"></div>
       <div id="qr-area" style="text-align:center;margin-bottom:12px;display:none">
@@ -1473,7 +870,7 @@
   </div>
 
   <div id="order-modal" class="modal-ov" style="display:none">
-    <div class="modal" style="max-width:440px">
+    <div class="cmodal" style="max-width:440px">
       <h3 id="om-title">รายละเอียด Order</h3>
       <div id="om-body"></div>
       <div class="macts"><button class="btn-cancel" onclick="closeM('order-modal')">ปิด</button></div>
@@ -1482,7 +879,7 @@
 
   <div id="toast"></div>
 
-  <script>
+<script>
     let products = [], cart = [], selPay_ = 'เงินสด', curCat = 'all', settings = {}, staffName = '', pendingItem = null;
 
     // LOGIN
@@ -1494,7 +891,29 @@
       if (pin.length !== 4) return;
       document.getElementById('pin-err').textContent = 'กำลังตรวจสอบ...';
       google.script.run.withSuccessHandler(function (r) {
-        if (r.success) { staffName = r.name; document.getElementById('login').classList.add('hidden'); document.getElementById('topbar').style.display = 'flex'; document.getElementById('staff-name').textContent = r.name; loadAll() }
+        if (r.success) {
+          staffName = r.name;
+          document.getElementById('login').classList.add('hidden');
+          document.getElementById('topbar').style.display = 'flex';
+          document.getElementById('staff-name').textContent = r.name;
+          // Welcome alert first, then load data
+          var now = new Date();
+          var hrs = now.getHours();
+          var greeting = hrs < 12 ? '🌅 สวัสดีตอนเช้า' : hrs < 17 ? '☀️ สวัสดีตอนบ่าย' : '🌙 สวัสดีตอนเย็น';
+          Swal.fire({
+            icon: 'success',
+            title: greeting,
+            html: '<div style="font-size:22px;font-weight:700;margin-bottom:4px">' + r.name + '</div>' +
+                  '<div style="color:#888;font-size:13px">เข้าสู่ระบบ POS ลาบบ้านสวน</div>' +
+                  '<div style="color:#aaa;font-size:11px;margin-top:4px">' + now.toLocaleString('th-TH') + '</div>',
+            confirmButtonColor: '#FF6B35',
+            timer: 1500,
+            timerProgressBar: true,
+            showConfirmButton: false
+          }).then(function() {
+            loadAll();
+          });
+        }
         else { document.getElementById('pin-err').textContent = '❌ PIN ไม่ถูกต้อง'; pin = ''; updDots() }
       }).withFailureHandler(function () { document.getElementById('pin-err').textContent = 'เกิดข้อผิดพลาด'; pin = ''; updDots() }).loginWithPin(pin);
     }
@@ -1509,7 +928,7 @@
       document.querySelectorAll('.tab-btn').forEach(function (x) { x.classList.remove('active') });
       var el = document.getElementById('page-' + p); if (el) el.classList.add('active');
       var tb = document.querySelector('[data-p="' + p + '"]'); if (tb) tb.classList.add('active');
-      if (p === 'tables') { loadTables(); startTablePoll(); } else { stopTablePoll(); }
+      if (p === 'tables') loadTables();
       if (p === 'orders') loadOrders();
       if (p === 'report') { setToday(); loadReport() }
       if (p === 'products') renderProdTable();
@@ -1517,17 +936,18 @@
 
     // LOAD ALL
     function loadAll() {
+      Swal.fire({ title:'กำลังโหลดข้อมูล...', html:'<div class="text-muted">เมนู, ตั้งค่า, รูปภาพ</div>', allowOutsideClick:false, didOpen:()=>{ Swal.showLoading() } });
+      // Show skeleton loading
+      var grid = document.getElementById('prod-grid');
+      grid.innerHTML = Array(8).fill('<div class="pc"><div class="pc-img-wrap skeleton" style="height:110px"></div><div class="pc-body"><div class="skeleton" style="height:14px;border-radius:4px;margin-bottom:6px"></div><div class="skeleton" style="height:18px;width:60%;margin:0 auto;border-radius:4px"></div></div></div>').join('');
+
       google.script.run.withSuccessHandler(function (d) {
-        if (d.debug) { document.title = 'DEBUG: ' + d.debug }
         products = d.products || []; settings = d.settings || {};
-        if (!products.length && d.debug) {
-          document.getElementById('prod-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#F39C12;font-size:12px;word-break:break-all">DEBUG: ' + d.debug + '</div>';
-        }
         applySettings(); renderCats(); renderProds(); renderProdTable(); fillTableSel();
+        Swal.close();
         nav('pos');
       }).withFailureHandler(function (e) {
-        toast('โหลดผิดพลาด: ' + (e && e.message ? e.message : 'unknown'), 'err');
-        document.getElementById('prod-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#E74C3C">❌ Error: ' + (e && e.message ? e.message : 'unknown') + '</div>';
+        Swal.fire({ icon:'error', title:'โหลดไม่สำเร็จ', text: e && e.message ? e.message : 'ไม่ทราบสาเหตุ', confirmButtonColor:'#FF6B35' });
       }).getAllData();
     }
     function applySettings() {
@@ -1562,7 +982,7 @@
       renderProds();
     }
 
-    // PRODUCTS GRID
+    // PRODUCTS GRID — Image-first cards with emoji fallback
     function renderProds() {
       var q = (document.getElementById('sq').value || '').toLowerCase();
       var grid = document.getElementById('prod-grid');
@@ -1571,15 +991,24 @@
         var qo = !q || p.name.toLowerCase().indexOf(q) !== -1;
         return co && qo;
       });
-      if (!list.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--t2)">ไม่พบเมนู</div>'; return }
+      if (!list.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--t2)"><i class="bi bi-search" style="font-size:32px;opacity:.3;display:block;margin-bottom:8px"></i>ไม่พบเมนู</div>'; return }
       grid.innerHTML = list.map(function (p) {
         var ic = cart.find(function (c) { return c.id === p.id });
         var oos = p.stock <= 0;
+        var visual;
+        if (p.image_data && p.image_data.indexOf('data:') === 0) {
+          visual = '<div class="pc-img-wrap"><img class="pc-img" src="' + p.image_data + '" alt="' + p.name + '" onerror="this.parentNode.innerHTML=\'<div class=em>' + (p.emoji || '🍽️') + '</div>\'"></div>';
+        } else {
+          visual = '<div class="em">' + (p.emoji || '🍽️') + '</div>';
+        }
         return '<div class="pc' + (oos ? ' out' : '') + '" onclick="addItem(\'' + p.id + '\')">' +
           (ic ? '<div class="badge">' + ic.qty + '</div>' : '') +
-          '<div class="em">' + p.emoji + '</div><div class="nm">' + p.name + '</div>' +
+          visual +
+          '<div class="pc-body">' +
+          '<div class="nm">' + p.name + '</div>' +
           '<div class="pr">฿' + p.price + '</div>' +
-          '<div class="st">' + (oos ? 'หมด' : p.unit) + '</div></div>';
+          '<div class="st">' + (oos ? 'หมด' : p.unit) + '</div>' +
+          '</div></div>';
       }).join('');
     }
 
@@ -1591,7 +1020,7 @@
       pushCart(p, '', '', '');
     }
     function openSpice(p) {
-      document.getElementById('spice-title').textContent = p.emoji + ' ' + p.name + ' — เลือกระดับเผ็ด';
+      document.getElementById('spice-title').textContent = (p.emoji || '🍽️') + ' ' + p.name + ' — เลือกระดับเผ็ด';
       document.querySelectorAll('.spice-b').forEach(function (b) { b.classList.remove('active') });
       document.querySelectorAll('.spice-b')[2].classList.add('active');
       var optsDiv = document.getElementById('spice-opts'); optsDiv.innerHTML = '';
@@ -1622,6 +1051,7 @@
       if (ex) { ex.qty++ }
       else { cart.push({ key: key, id: p.id, name: p.name, price: p.price + optExtra, basePrice: p.price, qty: 1, unit: p.unit, spice: spice, options: opts, note: note, emoji: p.emoji }) }
       renderCart(); renderProds();
+      toast('✅ ' + p.name, 'ok');
     }
 
     // CART
@@ -1634,14 +1064,14 @@
     function clearCart() { cart = []; renderCart(); renderProds() }
     function renderCart() {
       var el = document.getElementById('cart-items');
-      if (!cart.length) { el.innerHTML = '<div class="cart-empty"><div class="ic">🛒</div><div>เลือกเมนูเพื่อเริ่มสั่ง</div></div>'; document.getElementById('checkout-btn').disabled = true; calcTotal(); return }
+      if (!cart.length) { el.innerHTML = '<div class="cart-empty"><div class="ic"><i class="bi bi-cart3"></i></div><div>เลือกเมนูเพื่อเริ่มสั่ง</div></div>'; document.getElementById('checkout-btn').disabled = true; document.getElementById('send-kitchen-btn').disabled = true; calcTotal(); return }
       el.innerHTML = cart.map(function (i) {
         var meta = []; if (i.spice) meta.push('🌶️' + i.spice); if (i.note) meta.push('📝' + i.note);
-        return '<div class="ci"><div class="info"><div class="nm">' + i.emoji + ' ' + i.name + '</div>' + (meta.length ? '<div class="meta">' + meta.join(' ') + '</div>' : '') + '</div>' +
+        return '<div class="ci"><div class="info"><div class="nm">' + (i.emoji || '🍽️') + ' ' + i.name + '</div>' + (meta.length ? '<div class="meta">' + meta.join(' ') + '</div>' : '') + '</div>' +
           '<div class="ctrls"><button class="qb" onclick="changeQty(\'' + i.key.replace(/'/g, "\\'") + '\',-1)">−</button><div class="qty">' + i.qty + '</div><button class="qb" onclick="changeQty(\'' + i.key.replace(/'/g, "\\'") + '\',1)">+</button></div>' +
           '<div class="sub">฿' + (i.qty * i.price) + '</div></div>';
       }).join('');
-      document.getElementById('checkout-btn').disabled = false; calcTotal();
+      document.getElementById('checkout-btn').disabled = false; document.getElementById('send-kitchen-btn').disabled = false; calcTotal();
     }
     function calcTotal() {
       var sub = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
@@ -1649,7 +1079,8 @@
       var grand = Math.max(0, sub - disc);
       document.getElementById('v-sub').textContent = '฿' + sub;
       document.getElementById('v-grand').textContent = '฿' + grand;
-       document.getElementById('checkout-btn').textContent = '📋 สั่งอาหาร ฿' + grand;
+      document.getElementById('checkout-btn').textContent = 'ชำระเงิน ฿' + grand;
+      document.getElementById('send-kitchen-btn').textContent = '🔥 ส่งครัว ฿' + grand;
     }
     function selPay(btn, m) { selPay_ = m; document.querySelectorAll('.pay-b').forEach(function (b) { b.classList.remove('active') }); btn.classList.add('active') }
     function applyStudentDisc() {
@@ -1660,29 +1091,52 @@
     }
   </script>
 
-  <script>
-    // CHECKOUT (สั่งอาหาร - ยังไม่ชำระ)
-    function checkout() {
+<script>
+    // SEND TO KITCHEN (ส่งครัวก่อน ยังไม่คิดเงิน)
+    function sendToKitchen() {
       if (!cart.length) return;
       var tbl = document.getElementById('table-sel').value;
-      if (!tbl || tbl === '-') { toast('❌ กรุณาเลือกโต๊ะก่อน', 'err'); return; }
+      if (tbl === '-') { Swal.fire({ icon:'warning', title:'กรุณาเลือกโต๊ะ', text:'ต้องเลือกโต๊ะก่อนส่งครัว', confirmButtonColor:'#FF6B35' }); return }
       var sub = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
       var disc = Number(document.getElementById('disc-input').value) || 0;
       var grand = Math.max(0, sub - disc);
-      var btn = document.getElementById('checkout-btn'); btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
+      var btn = document.getElementById('send-kitchen-btn'); btn.disabled = true;
+      Swal.fire({ title:'กำลังส่งครัว...', html:'โต๊ะ ' + tbl + ' | ฿' + grand, allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
       var od = {
         items: cart.map(function (i) { return { id: i.id, name: i.name, price: i.price, qty: i.qty, spice: i.spice || '', options: i.options || '', note: i.note || '' } }),
         total: sub, discount: disc, discountType: disc > 0 ? 'manual' : '', grandTotal: grand, payment: '',
-        tableNo: tbl, orderType: document.getElementById('order-type').value, cashier: staffName, customerCount: 1
+        tableNo: tbl, orderType: document.getElementById('order-type').value, cashier: staffName, customerCount: 1, initialStatus: 'cooking'
       };
       google.script.run.withSuccessHandler(function (r) {
         if (r.success) {
-          toast('✅ ส่งออร์เดอร์โต๊ะ ' + tbl + ' สำเร็จ!', 'ok');
+          Swal.fire({ icon:'success', title:'ส่งครัวแล้ว! 🔥', html:'Order: <b>'+r.orderId+'</b><br>โต๊ะ ' + tbl, confirmButtonColor:'#FF6B35', timer:2500, timerProgressBar:true });
           clearCart(); document.getElementById('disc-input').value = ''; document.getElementById('table-sel').value = '-'; reloadProds();
-          nav('tables');
-        } else toast('ผิดพลาด: ' + r.message, 'err');
-        btn.disabled = false; btn.textContent = '📋 สั่งอาหาร';
-      }).withFailureHandler(function (e) { toast('ผิดพลาด', 'err'); btn.disabled = false; btn.textContent = '📋 สั่งอาหาร' }).saveOrder(od);
+          if (typeof loadTables === 'function') loadTables();
+        } else { Swal.fire({ icon:'error', title:'ผิดพลาด', text:r.message, confirmButtonColor:'#FF6B35' }) }
+        btn.disabled = false; btn.textContent = '🔥 ส่งครัว';
+      }).withFailureHandler(function (e) { Swal.fire({ icon:'error', title:'ผิดพลาด', text:e&&e.message||'ไม่ทราบสาเหตุ', confirmButtonColor:'#FF6B35' }); btn.disabled = false; btn.textContent = '🔥 ส่งครัว' }).saveOrder(od);
+    }
+
+    // CHECKOUT
+    function checkout() {
+      if (!cart.length) return;
+      var sub = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
+      var disc = Number(document.getElementById('disc-input').value) || 0;
+      var grand = Math.max(0, sub - disc);
+      var btn = document.getElementById('checkout-btn'); btn.disabled = true;
+      Swal.fire({ title:'กำลังบันทึก...', html:'ยอด ฿'+grand, allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
+      var od = {
+        items: cart.map(function (i) { return { id: i.id, name: i.name, price: i.price, qty: i.qty, spice: i.spice || '', options: i.options || '', note: i.note || '' } }),
+        total: sub, discount: disc, discountType: disc > 0 ? 'manual' : '', grandTotal: grand, payment: selPay_,
+        tableNo: document.getElementById('table-sel').value, orderType: document.getElementById('order-type').value, cashier: staffName, customerCount: 1, initialStatus: 'completed'
+      };
+      google.script.run.withSuccessHandler(function (r) {
+        if (r.success) {
+          Swal.fire({ icon:'success', title:'บันทึกสำเร็จ!', text:'Order: '+r.orderId, confirmButtonColor:'#FF6B35', timer:2000, timerProgressBar:true });
+          showReceipt(r, od); clearCart(); document.getElementById('disc-input').value = ''; document.getElementById('table-sel').value = '-'; reloadProds(); if(typeof loadTables==='function') loadTables();
+        } else { Swal.fire({ icon:'error', title:'ผิดพลาด', text:r.message, confirmButtonColor:'#FF6B35' }) }
+        btn.disabled = false; btn.textContent = 'ชำระเงิน';
+      }).withFailureHandler(function (e) { Swal.fire({ icon:'error', title:'ผิดพลาด', text:e&&e.message||'ไม่ทราบสาเหตุ', confirmButtonColor:'#FF6B35' }); btn.disabled = false; btn.textContent = 'ชำระเงิน' }).saveOrder(od);
     }
     function reloadProds() { google.script.run.withSuccessHandler(function (p) { products = p; renderProds() }).getProducts() }
 
@@ -1721,10 +1175,15 @@
 
     // ═══════════════ TABLES - Professional ═══════════════
     var _tblCache = [];
-    var _tblPollTimer = null;
-    function startTablePoll() { stopTablePoll(); _tblPollTimer = setInterval(loadTables, 15000); }
-    function stopTablePoll() { if (_tblPollTimer) { clearInterval(_tblPollTimer); _tblPollTimer = null; } }
+    var _tblAutoRefresh = null;
     function loadTables() {
+      // Auto-refresh every 15 seconds while on tables page
+      if (_tblAutoRefresh) clearInterval(_tblAutoRefresh);
+      _tblAutoRefresh = setInterval(function() {
+        var pg = document.getElementById('page-tables');
+        if (pg && pg.classList.contains('active')) { loadTables(); }
+        else { clearInterval(_tblAutoRefresh); _tblAutoRefresh = null; }
+      }, 15000);
       google.script.run.withSuccessHandler(function (tbs) {
         if (!Array.isArray(tbs)) {
           toast('DEBUG: response=' + typeof tbs + ': ' + JSON.stringify(tbs).substring(0, 80), 'err');
@@ -1759,12 +1218,17 @@
           else if (t.status === 'served') { cls = 'tbl-served'; icon = '✅'; label = 'เสิร์ฟแล้ว'; color = '#3498DB'; occ++ }
           else { cls = 'avail'; icon = '🪑'; label = 'ว่าง'; color = '#2ECC71'; avail++ }
           var time = t.time ? '<div class="tbl-time">' + t.time + '</div>' : '';
+          // Show served/total items progress
           var items = '';
-          if (t.totalItems) {
-            var sv = t.servedCount || 0;
-            var tt = t.totalItems;
-            var ic = sv === tt ? '#2ECC71' : '#F39C12';
-            items = '<div class="tbl-items" style="color:'+ic+'">✅ '+sv+'/'+tt+' เสิร์ฟ</div>';
+          if (t.itemCount) {
+            var served = t.servedCount || 0;
+            var total = t.totalItems || t.itemCount;
+            var pct = total > 0 ? Math.round(served / total * 100) : 0;
+            var pColor = pct === 100 ? '#2ECC71' : pct > 0 ? '#F39C12' : '#E74C3C';
+            items = '<div class="tbl-items" style="font-size:11px">' +
+              '<span style="color:' + pColor + ';font-weight:600">' + served + '/' + total + '</span> เสิร์ฟ' +
+              '<div style="background:rgba(255,255,255,0.1);border-radius:3px;height:4px;margin-top:3px;overflow:hidden">' +
+              '<div style="background:' + pColor + ';height:100%;width:' + pct + '%;border-radius:3px;transition:width .3s"></div></div></div>';
           }
           var amt = t.total ? '<div class="tbl-amt">฿' + t.total + '</div>' : '';
           if (cls === 'tbl-ordering') {
@@ -1772,12 +1236,28 @@
             var cartTotal = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
             amt = '<div class="tbl-amt">฿' + cartTotal + '</div>';
           }
-          return '<div class="tbl-card ' + cls + '" style="border-color:' + color + ';--tc:' + color + ';cursor:pointer" onclick="tblClick(' + idx + ')">' +
-            '<div class="tbl-dot" style="background:' + color + '"></div>' +
-            '<div class="tbl-icon">' + icon + '</div>' +
-            '<div class="tno">' + t.no + '</div>' +
-            '<div class="tbl-label" style="color:' + color + '">' + label + '</div>' +
-            time + items + amt + '</div>';
+          // Notification badge on table card
+          var notifBadge = '';
+          var tblNotif = _tblNotifs[String(t.no)];
+          if (tblNotif) {
+            var nIcon = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? '💰' : '🔔';
+            var nColor = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? '#27AE60' : '#E74C3C';
+            var nText = tblNotif.type === 'bill' || tblNotif.type === 'request_bill' ? 'ขอเก็บเงิน' : 'เรียกพนักงาน';
+            notifBadge = '<div onclick="event.stopPropagation();clearTblNotif(' + t.no + ')" style="position:absolute;top:-6px;right:-6px;background:' + nColor + ';color:#fff;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;animation:pulse 1s infinite;box-shadow:0 2px 8px ' + nColor + '80;z-index:2">' + nIcon + ' ' + nText + '</div>';
+          }
+          return '<div class="tbl-card ' + cls + '" style="--tc:' + color + '" onclick="tblClick(' + idx + ')">' +
+            notifBadge +
+            '<div class="tbl-card-top">' +
+              '<div class="tbl-icon-wrap" style="color:' + color + '; border-color:' + color + '40">' + icon + '</div>' +
+              '<div class="tno-wrap">' +
+                '<div class="tno">' + t.no + '</div>' +
+                '<div class="tbl-label" style="color:' + color + '; background:' + color + '15">' + label + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="tbl-card-bottom">' +
+              time + items + amt +
+            '</div>' +
+          '</div>';
         }).join('');
         document.getElementById('tbl-avail').textContent = avail;
         document.getElementById('tbl-busy').textContent = busy;
@@ -1809,10 +1289,11 @@
       var party = document.getElementById('res-party').value;
       var contact = document.getElementById('res-contact').value.trim();
       var note = document.getElementById('res-note').value.trim();
-      if (!date || !time || !tableNo || !name) { toast('กรุณากรอกวันที่ เวลา โต๊ะ และชื่อลูกค้า', 'err'); return }
+      if (!date || !time || !tableNo || !name) { Swal.fire({ icon:'warning', title:'ข้อมูลไม่ครบ', text:'กรุณากรอกวันที่ เวลา โต๊ะ และชื่อลูกค้า', confirmButtonColor:'#FF6B35' }); return }
+      Swal.fire({ title:'กำลังบันทึกการจอง...', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
       google.script.run.withSuccessHandler(function (r) {
-        if (r.success) { closeM('reserve-modal'); toast('✅ จองโต๊ะเรียบร้อย', 'ok'); loadTables() }
-        else toast('ผิดพลาด: ' + (r.message || 'ไม่สามารถบันทึกได้'), 'err');
+        if (r.success) { closeM('reserve-modal'); Swal.fire({ icon:'success', title:'จองสำเร็จ!', timer:1500, showConfirmButton:false }); loadTables() }
+        else Swal.fire({ icon:'error', title:'ผิดพลาด', text:r.message||'ไม่สามารถบันทึกได้', confirmButtonColor:'#FF6B35' });
       }).saveReservation({ date: date, time: time, tableNo: tableNo, customerName: name, partySize: party, contact: contact, note: note, createdBy: staffName });
     }
 
@@ -1864,12 +1345,12 @@
         body += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">สถานะ</span><span style="font-weight:600">' + (stMap2[t.status] || t.status) + '</span></div>';
         body += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">เวลาสั่ง</span><span>' + (t.time || '-') + '</span></div>';
         body += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b)"><span style="color:var(--t2)">ยอดรวม</span><span style="font-size:20px;font-weight:700;color:var(--p)">฿' + (t.total || 0) + '</span></div>';
-        body += '<div id="tbl-items-area" style="margin-top:8px;max-height:300px;overflow-y:auto;color:var(--t2);font-size:12px;padding-right:12px">กำลังโหลดรายการ...</div>';
+        body += '<div id="tbl-items-area" style="margin-top:8px;max-height:250px;overflow-y:auto;color:var(--t2);font-size:12px"><div style="text-align:center;padding:20px"><div style="display:inline-block;width:24px;height:24px;border:3px solid rgba(255,255,255,0.1);border-top-color:#FF6B35;border-radius:50%;animation:spin 0.8s linear infinite"></div><div style="margin-top:8px;font-size:12px;color:var(--t2)">กำลังโหลดรายการอาหาร...</div></div></div>';
         body += '</div>';
         acts = '';
         if (t.status === 'new') acts += '<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\'' + t.orderId + '\',\'cooking\',' + t.no + ')">🔥 เริ่มทำ</button>';
         if (t.status === 'cooking') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\'' + t.orderId + '\',\'served\',' + t.no + ')">✅ เสิร์ฟ</button>';
-        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="collectPayment(\'' + t.orderId + '\',' + t.no + ')">💰 เก็บเงิน</button>';
+        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="updateTblStatus(\'' + t.orderId + '\',\'completed\',' + t.no + ')">💰 เก็บเงิน/ว่าง</button>';
         acts += '<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
 
       }
@@ -1879,89 +1360,38 @@
       document.getElementById('tbl-modal').style.display = 'flex';
       // Load items on-demand for order tables
       if (t.orderId && ['new', 'cooking', 'served'].indexOf(t.status) !== -1) {
-        window._currentOrderId = t.orderId;
-        window._currentTableNo = t.no;
-        loadItemsForModal(t.orderId);
+        var _oid = t.orderId;
+        google.script.run.withSuccessHandler(function (d) {
+          var el = document.getElementById('tbl-items-area');
+          if (!el) return;
+          if (d && d.items && d.items.length) {
+            var served = d.items.filter(function(i){ return i.item_status === 'served' }).length;
+            var h = '<div class="item-counter" style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">📋 รายการอาหาร (' + served + '/' + d.items.length + ' เสร็จ):</div>';
+            d.items.forEach(function (i) {
+              var isDone = i.item_status === 'served';
+              var statusIcon = isDone ? '✅' : '🔥';
+              var statusColor = isDone ? '#2ECC71' : '#F39C12';
+              var statusText = isDone ? 'เสิร์ฟแล้ว' : 'กำลังทำ';
+              var nextStatus = isDone ? 'cooking' : 'served';
+              var btnText = isDone ? '↩ คืน' : '✅ เสร็จ';
+              var btnColor = isDone ? '#95a5a6' : '#2ECC71';
+              h += '<div data-row="' + i.row + '" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+                '<div style="flex:1">' +
+                  '<div style="font-size:13px;font-weight:500"><span class="item-icon">' + statusIcon + '</span> ' + i.qty + 'x ' + i.product_name + '</div>' +
+                  (i.spice ? '<div style="font-size:10px;color:var(--t2)">🌶️' + i.spice + '</div>' : '') +
+                  (i.note ? '<div style="font-size:10px;color:var(--t2)">📝' + i.note + '</div>' : '') +
+                '</div>' +
+                '<div style="text-align:right;white-space:nowrap">' +
+                  '<div style="font-size:12px;font-weight:600">฿' + i.subtotal + '</div>' +
+                  '<div class="item-st" style="font-size:9px;color:' + statusColor + '">' + statusText + '</div>' +
+                '</div>' +
+                '<button class="item-btn" onclick="toggleItemStatus(\'' + _oid + '\',' + i.row + ',\'' + nextStatus + '\')" style="background:' + btnColor + ';color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;white-space:nowrap">' + btnText + '</button>' +
+                '</div>';
+            });
+            el.innerHTML = h;
+          } else { el.textContent = 'ไม่พบรายการ'; }
+        }).getTableDetail(_oid);
       }
-    }
-
-    function loadItemsForModal(orderId) {
-      google.script.run.withSuccessHandler(function (d) {
-        var el = document.getElementById('tbl-items-area');
-        if (!el) return;
-        if (d && d.items && d.items.length) {
-          var served = d.items.filter(function(i){return i.item_status==='served'}).length;
-          var total = d.items.length;
-          var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-          h += '<span style="font-size:13px;font-weight:700;color:var(--t2)">📋 รายการ ('+total+')</span>';
-          h += '<span style="font-size:12px;color:'+(served===total?'#2ECC71':'#F39C12')+'">✅ เสิร์ฟแล้ว '+served+'/'+total+'</span>';
-          h += '</div>';
-          d.items.forEach(function (i) {
-            var isServed = i.item_status === 'served';
-            var badge = isServed
-              ? '<span style="color:#2ECC71;font-size:11px;font-weight:700">✅ เสิร์ฟแล้ว</span>'
-              : '<span style="color:#F39C12;font-size:11px;font-weight:700">🔥 กำลังทำ</span>';
-            var btn = isServed
-              ? '<button style="background:#555;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer" onclick="toggleItemStatus(\''+window._currentOrderId+'\','+i.row+',\'cooking\',this)">↩️ ยกเลิก</button>'
-              : '<button style="background:#2ECC71;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer" onclick="toggleItemStatus(\''+window._currentOrderId+'\','+i.row+',\'served\',this)">✅ เสิร์ฟ</button>';
-            var meta = [];
-            if(i.spice) meta.push('🌶️'+i.spice);
-            if(i.note) meta.push('📝'+i.note);
-            h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);'+(isServed?'opacity:0.6':'')+'">';
-            h += '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+i.qty+'x '+i.product_name+'</div>';
-            if(meta.length) h += '<div style="font-size:11px;color:var(--t2)">'+meta.join(' · ')+'</div>';
-            h += '</div>';
-            h += '<div style="text-align:right">'+badge+'<div style="margin-top:4px">'+btn+'</div></div>';
-            h += '</div>';
-          });
-          el.innerHTML = h;
-        } else { el.textContent = 'ไม่พบรายการ'; }
-      }).getTableDetail(orderId);
-    }
-
-    function toggleItemStatus(orderId, row, newStatus, btn) {
-      // Optimistic UI - update immediately
-      if (btn) { btn.disabled = true; btn.textContent = '⏳'; btn.style.opacity = '0.5'; }
-      // Find and update the item row in DOM instantly
-      var el = btn ? btn.closest('div[style*="display:flex"]') : null;
-      if (el && newStatus === 'served') el.style.opacity = '0.5';
-      google.script.run.withSuccessHandler(function(r) {
-        if (r && r.success) {
-          loadItemsForModal(orderId);
-          if (r.allServed) {
-            toast('✅ เสิร์ฟครบทุกรายการ!', 'ok');
-            setTimeout(function(){ loadTables(); }, 500);
-          }
-        }
-      }).updateItemStatus(orderId, row, newStatus);
-    }
-
-    function collectPayment(orderId, tableNo) {
-      closeM('tbl-modal');
-      google.script.run.withSuccessHandler(function(d) {
-        if (!d) { toast('❌ ไม่พบข้อมูล order', 'err'); return; }
-        var od = {
-          items: d.items || [],
-          total: d.total || 0,
-          discount: d.discount || 0,
-          grandTotal: d.grandTotal || d.total || 0,
-          payment: 'เงินสด',
-          tableNo: d.tableNo || tableNo,
-          orderType: d.orderType || 'dine-in'
-        };
-        var r = {
-          orderId: orderId,
-          shopName: settings.shop_name || 'ลาบบ้านสวน',
-          shopPhone: settings.shop_phone || '',
-          date: d.date || '',
-          time: d.time || ''
-        };
-        showReceipt(r, od);
-        // Mark as completed after showing receipt
-        google.script.run.withSuccessHandler(function() {
-          loadTables();
-        }).updateOrderStatus(orderId, 'completed', String(tableNo));
-      }).getOrderDetail(orderId);
     }
 
     function selectTable(no) {
@@ -1977,22 +1407,64 @@
       toast('🪑 เลือกโต๊ะ ' + no + ' แล้ว', 'ok');
     }
 
+    // Toggle item status (cooking ↔ served) — Optimistic UI
+    function toggleItemStatus(orderId, itemRow, newStatus) {
+      // Optimistic: update UI instantly
+      var el = document.getElementById('tbl-items-area');
+      if (el) {
+        var items = el.querySelectorAll('[data-row]');
+        items.forEach(function(item) {
+          if (item.dataset.row == itemRow) {
+            var isDone = newStatus === 'served';
+            item.querySelector('.item-icon').textContent = isDone ? '✅' : '🔥';
+            item.querySelector('.item-st').textContent = isDone ? 'เสิร์ฟแล้ว' : 'กำลังทำ';
+            item.querySelector('.item-st').style.color = isDone ? '#2ECC71' : '#F39C12';
+            var btn = item.querySelector('.item-btn');
+            btn.textContent = isDone ? '↩ คืน' : '✅ เสร็จ';
+            btn.style.background = isDone ? '#95a5a6' : '#2ECC71';
+            btn.setAttribute('onclick', "toggleItemStatus('" + orderId + "'," + itemRow + ",'" + (isDone ? 'cooking' : 'served') + "')");
+          }
+        });
+        // Update counter
+        var allItems = el.querySelectorAll('[data-row]');
+        var doneCount = 0;
+        allItems.forEach(function(item) { if (item.querySelector('.item-st').textContent === 'เสิร์ฟแล้ว') doneCount++ });
+        var counter = el.querySelector('.item-counter');
+        if (counter) counter.textContent = '📋 รายการอาหาร (' + doneCount + '/' + allItems.length + ' เสร็จ):';
+      }
+      // Send to server in background
+      google.script.run.withSuccessHandler(function(r) {
+        if (r && r.allServed) { loadTables(); }
+      }).withFailureHandler(function(e) {
+        // Revert on error
+        toast('❌ บันทึกไม่สำเร็จ กรุณาลองใหม่', 'err');
+      }).updateItemStatus(orderId, itemRow, newStatus);
+    }
+
     function updateTblStatus(oid, st, tblNo) {
-      if (!oid) { toast('❌ ไม่พบ Order ID', 'err'); return; }
+      if (!oid) { Swal.fire({ icon:'error', title:'ไม่พบ Order ID', confirmButtonColor:'#FF6B35' }); return; }
       closeM('tbl-modal');
-      toast('⏳ กำลังอัปเดต...', '');
+      Swal.fire({ title:'กำลังอัปเดต...', allowOutsideClick:true, allowEscapeKey:true, didOpen:function(){ Swal.showLoading() } });
+      // Safety timeout — auto close Swal after 10s
+      var safetyTimer = setTimeout(function(){ Swal.close(); Swal.fire({ icon:'warning', title:'ใช้เวลานาน', text:'ลองรีเฟรชหน้า', confirmButtonColor:'#FF6B35' }) }, 10000);
       google.script.run
         .withSuccessHandler(function(r) {
+          clearTimeout(safetyTimer);
           if (r && r.success) {
             var msg = {'cooking':'🔥 เริ่มทำแล้ว','served':'✅ เสิร์ฟแล้ว','completed':'💰 เก็บเงินเรียบร้อย'};
-            toast(msg[st] || '✅ อัปเดตแล้ว', 'ok');
+            Swal.fire({ icon:'success', title:msg[st]||'อัปเดตแล้ว', timer:1500, showConfirmButton:false });
+            // Clear notification badge when completing order
+            if (st === 'completed' && tblNo) {
+              delete _tblNotifs[String(tblNo)];
+            }
           } else {
-            toast('❌ ' + (r && r.message || 'ไม่สำเร็จ'), 'err');
+            Swal.fire({ icon:'error', title:'ไม่สำเร็จ', text:r&&r.message||'', confirmButtonColor:'#FF6B35' });
           }
           loadTables();
         })
         .withFailureHandler(function(e) {
-          toast('❌ Error: ' + (e && e.message || 'ไม่ทราบ'), 'err');
+          clearTimeout(safetyTimer);
+          Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e&&e.message||'ไม่ทราบ', confirmButtonColor:'#FF6B35' });
         })
         .updateOrderStatus(oid, st, tblNo);
     }
@@ -2000,11 +1472,17 @@
     // PRODUCT MANAGEMENT
     function renderProdTable() {
       var tb = document.getElementById('prod-tbody');
-      if (!products.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--t2)">ยังไม่มีสินค้า</td></tr>'; return }
+      if (!products.length) { tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--t2)"><i class="bi bi-box-seam" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>ยังไม่มีสินค้า</td></tr>'; return }
       tb.innerHTML = products.map(function (p) {
         var profit = p.cost ? '฿' + (p.price - p.cost) : '—';
+        var thumb;
+        if (p.image_data && p.image_data.indexOf('data:') === 0) {
+          thumb = '<img src="' + p.image_data + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover;vertical-align:middle">';
+        } else {
+          thumb = '<span style="font-size:24px">' + (p.emoji || '🍽️') + '</span>';
+        }
         return '<tr><td><code style="font-size:10px;color:var(--t2)">' + p.id + '</code></td>' +
-          '<td><strong>' + p.emoji + ' ' + p.name + '</strong></td>' +
+          '<td>' + thumb + ' <strong>' + p.name + '</strong></td>' +
           '<td><span class="bdg bdg-o">' + p.category + '</span></td>' +
           '<td style="font-weight:600">฿' + p.price + '</td>' +
           '<td><span class="bdg ' + (p.stock <= 0 ? 'bdg-r' : p.stock <= 5 ? 'bdg-w' : 'bdg-g') + '">' + p.stock + ' ' + p.unit + '</span></td>' +
@@ -2035,11 +1513,13 @@
         emoji: document.getElementById('pm-emoji').value || '🍽️', sort_order: document.getElementById('pm-sort').value || 99,
         options: document.getElementById('pm-opts').value.trim(), active: true, spice_default: ''
       };
-      if (!d.name || !d.price) { toast('กรุณากรอกชื่อและราคา', 'err'); return }
+      if (!d.name || !d.price) { Swal.fire({ icon:'warning', title:'ข้อมูลไม่ครบ', text:'กรุณากรอกชื่อและราคา', confirmButtonColor:'#FF6B35' }); return }
+      Swal.fire({ title:'กำลังบันทึก...', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
       var fn = id ? 'updateProduct' : 'addProduct';
       google.script.run.withSuccessHandler(function (r) {
         if (r.success) {
-          closeM('prod-modal'); toast(id ? '✅ แก้ไขแล้ว' : '✅ เพิ่มแล้ว', 'ok');
+          closeM('prod-modal');
+          Swal.fire({ icon:'success', title:id?'แก้ไขแล้ว':'เพิ่มแล้ว', timer:1500, showConfirmButton:false });
           google.script.run.withSuccessHandler(function (p) { products = p; renderCats(); renderProds(); renderProdTable() }).getProducts()
         }
       })[fn](d);
@@ -2092,33 +1572,135 @@
     function setMonth() { var n = new Date(), s = new Date(n.getFullYear(), n.getMonth(), 1).toISOString().split('T')[0], e = new Date(n.getFullYear(), n.getMonth() + 1, 0).toISOString().split('T')[0]; document.getElementById('rpt-s').value = s; document.getElementById('rpt-e').value = e }
     function loadReport() {
       var s = document.getElementById('rpt-s').value, e = document.getElementById('rpt-e').value;
-      if (!s || !e) { toast('เลือกวันที่', 'err'); return }
-      document.getElementById('rpt-stats').innerHTML = '<div style="color:var(--t2);font-size:13px">กำลังโหลด...</div>';
-      google.script.run.withSuccessHandler(renderReport).getReport(s, e);
+      if (!s || !e) { Swal.fire({ icon:'warning', title:'เลือกวันที่', confirmButtonColor:'#FF6B35' }); return }
+      Swal.fire({ title:'กำลังโหลดรายงาน...', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
+      google.script.run.withSuccessHandler(renderReport).withFailureHandler(function(err) {
+        Swal.fire({ icon:'error', title:'โหลดรายงานไม่สำเร็จ', text:err&&err.message||'', confirmButtonColor:'#FF6B35' });
+      }).getReport(s, e);
     }
     function renderReport(d) {
+      _lastReport = d; // store for export
       var fm = function (n) { return n.toLocaleString('th-TH') };
       document.getElementById('rpt-stats').innerHTML =
         '<div class="stat-c"><div class="lbl">💰 ยอดขาย</div><div class="val">฿' + fm(d.totalSales) + '</div></div>' +
         '<div class="stat-c"><div class="lbl">🧾 ออร์เดอร์</div><div class="val">' + fm(d.orderCount) + '</div></div>' +
         '<div class="stat-c"><div class="lbl">📊 เฉลี่ย/ออร์เดอร์</div><div class="val sm">฿' + fm(Math.round(d.avgOrder)) + '</div></div>' +
-        '<div class="stat-c"><div class="lbl">👥 ลูกค้า</div><div class="val">' + fm(d.customerCount) + '</div></div>';
+        '<div class="stat-c"><div class="lbl">👥 ลูกค้า</div><div class="val">' + fm(d.customerCount) + '</div></div>' +
+        '<div class="stat-c"><div class="lbl">🏷️ ส่วนลดรวม</div><div class="val sm">฿' + fm(d.totalDiscount || 0) + '</div></div>' +
+        '<div class="stat-c"><div class="lbl">💵 ยอดสุทธิ</div><div class="val sm">฿' + fm(d.totalSales - (d.totalDiscount || 0)) + '</div></div>';
+
+      // Top products
       document.getElementById('top-tbody').innerHTML = (d.topProducts || []).map(function (p, i) {
         return '<tr><td>' + (['🥇', '🥈', '🥉'][i] || '  ') + ' ' + p.name + '</td><td>' + p.qty + '</td><td style="color:var(--p);font-weight:600">฿' + fm(p.revenue) + '</td></tr>'
       }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--t2)">ไม่มีข้อมูล</td></tr>';
+
+      // Payment chart
       var pm = d.payMap || {}, pt = Object.values(pm).reduce(function (s, v) { return s + v }, 0) || 1;
       document.getElementById('pay-chart').innerHTML = Object.entries(pm).map(function (e) {
         var pct = Math.round(e[1] / pt * 100);
+        var colors = {'เงินสด':'#2ECC71','โอน':'#3498DB','บัตร':'#9B59B6'};
+        var c = colors[e[0]] || 'var(--p)';
         return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>' + e[0] + '</span><span>฿' + fm(e[1]) + ' (' + pct + '%)</span></div>' +
-          '<div style="height:5px;background:var(--c);border-radius:3px"><div style="height:100%;width:' + pct + '%;background:var(--p);border-radius:3px"></div></div></div>'
+          '<div style="height:5px;background:var(--c);border-radius:3px"><div style="height:100%;width:' + pct + '%;background:' + c + ';border-radius:3px"></div></div></div>'
       }).join('') || '<div style="color:var(--t2);font-size:12px">ไม่มีข้อมูล</div>';
+
+      // Order type chart
+      var tm = d.typeMap || {}, tt = Object.values(tm).reduce(function (s, v) { return s + v }, 0) || 1;
+      var typeIcons = {'ทานที่ร้าน':'🍽️','กลับบ้าน':'🏠','เดลิเวอรี่':'🛵'};
+      document.getElementById('type-chart').innerHTML = Object.entries(tm).map(function (e) {
+        var pct = Math.round(e[1] / tt * 100);
+        return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>' + (typeIcons[e[0]]||'📦') + ' ' + e[0] + '</span><span>' + e[1] + ' (' + pct + '%)</span></div>' +
+          '<div style="height:5px;background:var(--c);border-radius:3px"><div style="height:100%;width:' + pct + '%;background:#E67E22;border-radius:3px"></div></div></div>'
+      }).join('') || '<div style="color:var(--t2);font-size:12px">ไม่มีข้อมูล</div>';
+
+      // Hourly chart
+      var hm = d.hourlyMap || {}, hmx = Math.max.apply(null, Object.values(hm).concat([1]));
+      var hHtml = '<div style="display:flex;gap:2px;align-items:flex-end;height:100px">';
+      for (var hr = 8; hr <= 22; hr++) {
+        var val = hm[String(hr)] || hm[String(hr).padStart(2,'0')] || 0;
+        var hPct = Math.round(val / hmx * 80);
+        var barColor = val > hmx * 0.7 ? '#E74C3C' : val > hmx * 0.4 ? '#F39C12' : '#2ECC71';
+        hHtml += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px" title="' + hr + ':00 = ฿' + fm(val) + '">' +
+          (val ? '<div style="font-size:7px;color:var(--t2)">฿' + (val >= 1000 ? Math.round(val/1000)+'k' : val) + '</div>' : '') +
+          '<div style="height:' + Math.max(hPct, 2) + 'px;width:100%;background:' + barColor + ';border-radius:3px 3px 0 0;min-height:2px"></div>' +
+          '<div style="font-size:8px;color:var(--t2)">' + hr + '</div></div>';
+      }
+      hHtml += '</div>';
+      document.getElementById('hourly-chart').innerHTML = Object.keys(hm).length ? hHtml : '<div style="color:var(--t2);font-size:12px">ไม่มีข้อมูล</div>';
+
+      // Daily chart
       var dl = d.daily || [], mx = Math.max.apply(null, dl.map(function (x) { return x.sales }).concat([1]));
       document.getElementById('daily-chart').innerHTML = dl.length ? '<div style="display:flex;gap:4px;align-items:flex-end;height:80px">' +
         dl.map(function (x) {
-          var h = Math.round(x.sales / mx * 70); return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px" title="' + x.date + ': ฿' + fm(x.sales) + '">' +
+          var h = Math.round(x.sales / mx * 70); return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px" title="' + x.date + ': ฿' + fm(x.sales) + ' (' + x.orders + ' orders)">' +
             '<div style="height:' + h + 'px;width:100%;background:var(--p);border-radius:3px 3px 0 0;min-height:2px"></div>' +
             '<div style="font-size:8px;color:var(--t2)">' + x.date.slice(5) + '</div></div>'
         }).join('') + '</div>' : '<div style="color:var(--t2);font-size:12px">ไม่มีข้อมูล</div>';
+
+      Swal.close();
+    }
+    var _lastReport = null;
+
+    function exportCSV() {
+      if (!_lastReport) { Swal.fire({ icon:'info', title:'กรุณาดูรายงานก่อน', confirmButtonColor:'#FF6B35' }); return }
+      var d = _lastReport;
+      var csv = '\uFEFF'; // BOM for Thai
+      csv += 'รายงานร้านลาบบ้านสวน\n';
+      csv += 'ช่วงวันที่,' + document.getElementById('rpt-s').value + ' ถึง ' + document.getElementById('rpt-e').value + '\n\n';
+      csv += 'สรุปภาพรวม\n';
+      csv += 'ยอดขายรวม,฿' + d.totalSales + '\n';
+      csv += 'จำนวนออเดอร์,' + d.orderCount + '\n';
+      csv += 'เฉลี่ยต่อออเดอร์,฿' + Math.round(d.avgOrder) + '\n';
+      csv += 'จำนวนลูกค้า,' + d.customerCount + '\n';
+      csv += 'ส่วนลดรวม,฿' + (d.totalDiscount||0) + '\n\n';
+      csv += 'เมนูขายดี\nเมนู,จำนวน,รายได้\n';
+      (d.topProducts||[]).forEach(function(p){ csv += p.name + ',' + p.qty + ',฿' + p.revenue + '\n' });
+      csv += '\nช่องทางชำระ\nช่องทาง,ยอด\n';
+      Object.entries(d.payMap||{}).forEach(function(e){ csv += e[0] + ',฿' + e[1] + '\n' });
+      csv += '\nยอดรายวัน\nวันที่,ยอดขาย,ออเดอร์\n';
+      (d.daily||[]).forEach(function(x){ csv += x.date + ',฿' + x.sales + ',' + x.orders + '\n' });
+      var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'report_' + document.getElementById('rpt-s').value + '.csv';
+      a.click(); URL.revokeObjectURL(a.href);
+      toast('📥 ดาวน์โหลด CSV แล้ว', 'ok');
+    }
+
+    function printReport() {
+      if (!_lastReport) { Swal.fire({ icon:'info', title:'กรุณาดูรายงานก่อน', confirmButtonColor:'#FF6B35' }); return }
+      var d = _lastReport, fm = function(n){ return n.toLocaleString('th-TH') };
+      var html = '<!DOCTYPE html><html><head><title>รายงาน ลาบบ้านสวน</title>' +
+        '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Sarabun,sans-serif;padding:30px;color:#333;font-size:14px}' +
+        'h1{text-align:center;margin-bottom:5px}h2{font-size:15px;margin:16px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}' +
+        '.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}' +
+        '.card{border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}' +
+        '.card .v{font-size:20px;font-weight:700;color:#FF6B35}.card .l{font-size:11px;color:#888}' +
+        'table{width:100%;border-collapse:collapse;margin:8px 0}th,td{padding:6px;text-align:left;border-bottom:1px solid #eee;font-size:12px}' +
+        'th{background:#f5f5f5;font-weight:600}.date{text-align:center;font-size:12px;color:#888;margin-bottom:16px}' +
+        '@media print{.no-print{display:none}}</style></head><body>' +
+        '<h1>🍜 ร้านลาบบ้านสวน</h1>' +
+        '<div class="date">' + document.getElementById('rpt-s').value + ' ถึง ' + document.getElementById('rpt-e').value + '</div>' +
+        '<div class="cards">' +
+        '<div class="card"><div class="l">ยอดขาย</div><div class="v">฿' + fm(d.totalSales) + '</div></div>' +
+        '<div class="card"><div class="l">ออเดอร์</div><div class="v">' + d.orderCount + '</div></div>' +
+        '<div class="card"><div class="l">ลูกค้า</div><div class="v">' + d.customerCount + '</div></div>' +
+        '</div>' +
+        '<h2>🏆 เมนูขายดี</h2><table><tr><th>เมนู</th><th>จำนวน</th><th>รายได้</th></tr>' +
+        (d.topProducts||[]).map(function(p){ return '<tr><td>'+p.name+'</td><td>'+p.qty+'</td><td>฿'+fm(p.revenue)+'</td></tr>' }).join('') +
+        '</table>' +
+        '<h2>💳 ช่องทางชำระ</h2><table><tr><th>ช่องทาง</th><th>ยอด</th></tr>' +
+        Object.entries(d.payMap||{}).map(function(e){ return '<tr><td>'+e[0]+'</td><td>฿'+fm(e[1])+'</td></tr>' }).join('') +
+        '</table>' +
+        '<h2>📅 ยอดรายวัน</h2><table><tr><th>วันที่</th><th>ยอดขาย</th><th>ออเดอร์</th></tr>' +
+        (d.daily||[]).map(function(x){ return '<tr><td>'+x.date+'</td><td>฿'+fm(x.sales)+'</td><td>'+x.orders+'</td></tr>' }).join('') +
+        '</table>' +
+        '<div class="no-print" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:10px 24px;background:#FF6B35;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">🖨️ พิมพ์</button></div>' +
+        '</body></html>';
+      var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+      var blobUrl = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = blobUrl; link.target = '_blank'; link.click();
+      setTimeout(function(){ URL.revokeObjectURL(blobUrl) }, 10000);
     }
 
     // SETTINGS
@@ -2126,50 +1708,153 @@
       var pairs = [['shop_name', document.getElementById('s-name').value.trim()], ['shop_phone', document.getElementById('s-phone').value.trim()],
       ['promptpay_id', document.getElementById('s-pp').value.trim()], ['table_count', document.getElementById('s-tables').value],
       ['promo_student_discount', document.getElementById('s-studisc').value], ['promo_family_price', document.getElementById('s-famprice').value]];
+      Swal.fire({ title:'กำลังบันทึกตั้งค่า...', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
       google.script.run.withSuccessHandler(function () {
-        pairs.forEach(function (p) { settings[p[0]] = p[1] }); applySettings(); fillTableSel(); toast('✅ บันทึกแล้ว', 'ok');
+        pairs.forEach(function (p) { settings[p[0]] = p[1] }); applySettings(); fillTableSel();
+        Swal.fire({ icon:'success', title:'บันทึกตั้งค่าแล้ว', timer:1500, showConfirmButton:false });
       }).saveMultipleSettings(pairs);
     }
-    function runSetup() { google.script.run.withSuccessHandler(function () { toast('✅ Setup สำเร็จ! รีโหลด...', 'ok'); setTimeout(function () { location.reload() }, 1500) }).setupSheets() }
-
-    function showQRCodes() {
-      var el = document.getElementById('qr-codes-area');
-      var count = Number(settings.table_count) || 10;
-      var baseUrl = 'https://script.google.com/a/macros/rkt.ac.th/s/AKfycbylSVdjz3xTU3AL306TtCgqqx_T9xJ9_CdY69xM6w-hNu9h15w-DuYI5u6h1WdiB_VC/exec';
-      var h = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px">';
-      for (var i = 1; i <= count; i++) {
-        var menuUrl = baseUrl + '?page=menu&table=' + i;
-        var qrApi = 'https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=' + encodeURIComponent(menuUrl);
-        h += '<div style="text-align:center;background:var(--s);border-radius:8px;padding:12px;border:1px solid var(--b)">';
-        h += '<img src="' + qrApi + '" style="width:120px;height:120px;border-radius:4px;background:#fff;padding:4px">';
-        h += '<div style="font-weight:700;margin-top:6px;font-size:14px">โต๊ะ ' + i + '</div>';
-        h += '<button onclick="printSingleQR(' + i + ')" style="margin-top:4px;background:var(--p);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">🖨️ พิมพ์</button>';
-        h += '</div>';
-      }
-      h += '</div>';
-      el.innerHTML = h;
+    function runSetup() {
+      Swal.fire({ title:'กำลัง Setup...', html:'สร้างตารางข้อมูลใน Google Sheets', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
+      google.script.run.withSuccessHandler(function () {
+        Swal.fire({ icon:'success', title:'Setup สำเร็จ!', text:'กำลังรีโหลด...', timer:2000, timerProgressBar:true, showConfirmButton:false });
+        setTimeout(function () { location.reload() }, 2000);
+      }).setupSheets();
     }
 
-    function printSingleQR(tableNo) {
-      var baseUrl = 'https://script.google.com/a/macros/rkt.ac.th/s/AKfycbylSVdjz3xTU3AL306TtCgqqx_T9xJ9_CdY69xM6w-hNu9h15w-DuYI5u6h1WdiB_VC/exec';
-      var menuUrl = baseUrl + '?page=menu&table=' + tableNo;
-      var qrApi = 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=' + encodeURIComponent(menuUrl);
-      var w = window.open('', '', 'width=400,height=500');
-      w.document.write('<div style="text-align:center;padding:20px;font-family:sans-serif">');
-      w.document.write('<h2>🍽️ ลาบบ้านสวน</h2>');
-      w.document.write('<img src="' + qrApi + '" style="width:250px;height:250px">');
-      w.document.write('<h1 style="margin-top:10px">โต๊ะ ' + tableNo + '</h1>');
-      w.document.write('<p style="color:#888;font-size:14px">สแกนเพื่อสั่งอาหาร 📱</p>');
-      w.document.write('</div>');
-      w.document.close();
-      setTimeout(function(){ w.print(); }, 500);
+    // ── QR Code Generator สำหรับโต๊ะ ──────────────────────
+    function generateAllTableQR() {
+      var count = Number(settings.table_count) || 10;
+      Swal.fire({ title:'กำลังสร้าง QR Code...', html: count + ' โต๊ะ', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
+      google.script.run.withSuccessHandler(function(baseUrl) {
+        var grid = document.getElementById('qr-grid');
+        var html = '';
+        for (var i = 1; i <= count; i++) {
+          var menuUrl = baseUrl + '?page=menu&table=' + i;
+          var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(menuUrl);
+          html += '<div class="qr-card" style="background:var(--c);border:1px solid var(--b);border-radius:14px;padding:16px;text-align:center">' +
+            '<div style="font-size:16px;font-weight:700;margin-bottom:8px">🪑 โต๊ะ ' + i + '</div>' +
+            '<img src="' + qrUrl + '" style="width:160px;height:160px;border-radius:8px;background:#fff;padding:8px" alt="QR โต๊ะ ' + i + '">' +
+            '<div style="font-size:10px;color:var(--t2);margin-top:6px;word-break:break-all">' + menuUrl + '</div>' +
+            '</div>';
+        }
+        grid.innerHTML = html;
+        Swal.fire({ icon:'success', title:'สร้าง QR สำเร็จ!', text: count + ' โต๊ะ', timer:1500, showConfirmButton:false });
+      }).getWebAppUrl();
+    }
+
+    function printAllQR() {
+      var grid = document.getElementById('qr-grid');
+      if (!grid.innerHTML.trim()) { Swal.fire({ icon:'info', title:'กรุณาสร้าง QR ก่อน', text:'กด "สร้าง QR ทุกโต๊ะ" ก่อนพิมพ์', confirmButtonColor:'#FF6B35' }); return }
+      var cards = grid.querySelectorAll('.qr-card');
+      if (!cards.length) { Swal.fire({ icon:'info', title:'ไม่พบ QR', confirmButtonColor:'#FF6B35' }); return }
+      Swal.fire({ title:'กำลังเตรียมพิมพ์...', html:'โหลดรูป QR Code', allowOutsideClick:false, didOpen:function(){ Swal.showLoading() } });
+      // Convert all QR images to base64
+      var promises = [];
+      cards.forEach(function(card) {
+        var imgEl = card.querySelector('img');
+        if (!imgEl) return;
+        promises.push(new Promise(function(resolve) {
+          var img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function() {
+            var c = document.createElement('canvas');
+            c.width = img.width; c.height = img.height;
+            c.getContext('2d').drawImage(img, 0, 0);
+            resolve({ title: card.querySelector('div').textContent, dataUrl: c.toDataURL('image/png'), url: card.querySelectorAll('div')[2] ? card.querySelectorAll('div')[2].textContent : '' });
+          };
+          img.onerror = function() { resolve({ title: card.querySelector('div').textContent, dataUrl: '', url: '' }); };
+          img.src = imgEl.src;
+        }));
+      });
+      Promise.all(promises).then(function(items) {
+        var html = '<!DOCTYPE html><html><head><title>QR Code เมนูโต๊ะ - ลาบบ้านสวน</title>' +
+          '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Sarabun,sans-serif;padding:20px}' +
+          '.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}' +
+          '.card{border:2px solid #333;border-radius:14px;padding:20px;text-align:center;page-break-inside:avoid}' +
+          '.card h2{font-size:20px;margin-bottom:10px}.card img{width:180px;height:180px;margin:0 auto;display:block}' +
+          '.card .shop{font-size:14px;color:#666;margin-top:8px}.card .url{font-size:8px;color:#999;margin-top:4px;word-break:break-all}' +
+          '.btn-print{padding:10px 24px;background:#FF6B35;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-top:10px}' +
+          '@media print{.no-print{display:none}body{padding:10px}.grid{gap:10px}}</style></head><body>' +
+          '<div style="text-align:center;margin-bottom:20px" class="no-print"><h1>🍜 QR Code เมนูโต๊ะ — ลาบบ้านสวน</h1>' +
+          '<button class="btn-print" onclick="window.print()">🖨️ พิมพ์</button></div>' +
+          '<div class="grid">';
+        items.forEach(function(it) {
+          html += '<div class="card"><h2>' + it.title + '</h2>' +
+            (it.dataUrl ? '<img src="' + it.dataUrl + '">' : '<div style="width:180px;height:180px;margin:0 auto;background:#eee;display:flex;align-items:center;justify-content:center">QR Error</div>') +
+            '<div class="shop">ลาบบ้านสวน — สแกนดูเมนู</div>' +
+            '<div class="url">' + it.url + '</div></div>';
+        });
+        html += '</div></body></html>';
+        Swal.close();
+        // Use Blob + open for reliable popup
+        var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+        var blobUrl = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = blobUrl;
+        link.target = '_blank';
+        link.click();
+        setTimeout(function(){ URL.revokeObjectURL(blobUrl) }, 10000);
+      });
     }
 
     // UTILS
     function closeM(id) { document.getElementById(id).style.display = 'none' }
     function toast(msg, type) { var t = document.getElementById('toast'); t.textContent = msg; t.className = 'show ' + (type || ''); setTimeout(function () { t.className = '' }, 2500) }
+
+    // ── Customer Notification System ───────────────────────────
+    var _notifShown = {};
+    var _tblNotifs = {}; // table notifications stored after dismiss
+    function pollNotifications() {
+      google.script.run.withSuccessHandler(function(notifs) {
+        if (!notifs || !notifs.length) return;
+        notifs.forEach(function(n) {
+          var key = n.row + '_' + n.time;
+          if (_notifShown[key]) return;
+          _notifShown[key] = true;
+          var isBill = (n.type === 'request_bill' || n.type === 'bill');
+          var icon = isBill ? '💰' : '🔔';
+          var title = isBill ? 'ขอเก็บเงิน!' : 'เรียกพนักงาน!';
+          var color = isBill ? '#27AE60' : '#E74C3C';
+          // Play notification sound
+          try { new Audio('data:audio/wav;base64,UklGRl9vT19teleV...').play().catch(function(){}); } catch(e){}
+          Swal.fire({
+            icon: isBill ? 'info' : 'warning',
+            title: icon + ' ' + title,
+            html: '<div style="font-size:28px;font-weight:bold;color:' + color + '">โต๊ะ ' + n.tableNo + '</div>' +
+                  '<div style="margin-top:8px;color:#888">เวลา ' + n.time + '</div>',
+            confirmButtonText: '✅ รับทราบ',
+            confirmButtonColor: color,
+            allowOutsideClick: false
+          }).then(function() {
+            // Dismiss on server
+            google.script.run.dismissNotification(n.row);
+            // Store as badge on table card
+            _tblNotifs[String(n.tableNo)] = { type: n.type, time: n.time, row: n.row };
+            // Refresh table grid to show badge
+            if (document.getElementById('page-tables') && document.getElementById('page-tables').classList.contains('active')) {
+              loadTables();
+            } else {
+              // Force re-render if cached
+              var g = document.getElementById('tbl-grid');
+              if (g && _tblCache.length) {
+                loadTables();
+              }
+            }
+          });
+        });
+      }).withFailureHandler(function(){}).getNotifications();
+    }
+    // Clear notification badge on table card
+    function clearTblNotif(tableNo) {
+      delete _tblNotifs[String(tableNo)];
+      toast('✅ โต๊ะ ' + tableNo + ' — ดำเนินการแล้ว', 'ok');
+      loadTables();
+    }
+    setInterval(pollNotifications, 8000);
+    setTimeout(pollNotifications, 2000);
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
-
 </html>

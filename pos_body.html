@@ -1,7 +1,7 @@
 <!-- LOGIN -->
   <div id="login">
     <div class="login-box">
-      <div style="font-size:48px;margin-bottom:8px">🍜</div>
+      <div class="login-logo">🍜</div>
       <h1>ลาบบ้านสวน</h1>
       <p>กรุณาใส่ PIN เพื่อเข้าสู่ระบบ</p>
       <div class="pin-dots">
@@ -78,7 +78,10 @@
           <button class="pay-b" onclick="selPay(this,'โอน')"><span>📱</span>โอน/QR</button>
           <button class="pay-b" onclick="selPay(this,'บัตร')"><span>💳</span>บัตร</button>
         </div>
-        <button id="checkout-btn" onclick="checkout()" disabled>ชำระเงิน</button>
+        <div style="display:flex;gap:8px">
+          <button id="send-kitchen-btn" onclick="sendToKitchen()" disabled style="flex:1;background:#E67E22;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">🔥 ส่งครัว</button>
+          <button id="checkout-btn" onclick="checkout()" disabled style="flex:1">ชำระเงิน</button>
+        </div>
       </div>
     </div>
   </div>
@@ -104,7 +107,7 @@
 
   <!-- TABLE DETAIL MODAL -->
   <div id="tbl-modal" class="modal-ov" style="display:none">
-    <div class="modal" style="max-width:420px">
+    <div class="cmodal" style="max-width:420px">
       <h3 id="tbl-modal-title">โต๊ะ 1</h3>
       <div id="tbl-modal-body"></div>
       <div class="macts" id="tbl-modal-acts"></div>
@@ -112,7 +115,7 @@
   </div>
 
   <div id="reserve-modal" class="modal-ov" style="display:none">
-    <div class="modal">
+    <div class="cmodal">
       <h3>🪑 จองโต๊ะ</h3>
       <input type="hidden" id="res-table-no">
       <div class="fg"><label>วันที่</label><input type="date" id="res-date"></div>
@@ -138,7 +141,7 @@
       <div class="twrap">
         <table>
           <thead>
-            <tr>
+          <tr>
               <th>ID</th>
               <th>ชื่อ</th>
               <th>หมวด</th>
@@ -199,7 +202,7 @@
       <div class="stat-cards" id="rpt-stats"></div>
       <div class="rprt-grid">
         <div>
-          <div class="sec-title">🏆 เมนูขายดี</div>
+          <div class="sec-title">🏆 เมนูขายดี (Top 10)</div>
           <div class="twrap" style="max-height:260px">
             <table>
               <thead>
@@ -216,9 +219,23 @@
         <div>
           <div class="sec-title">💳 ช่องทางชำระ</div>
           <div id="pay-chart"></div>
-          <div class="sec-title" style="margin-top:16px">📅 ยอดรายวัน</div>
+          <div class="sec-title" style="margin-top:16px">🍽️ ประเภทออเดอร์</div>
+          <div id="type-chart"></div>
+        </div>
+      </div>
+      <div class="rprt-grid" style="margin-top:16px">
+        <div>
+          <div class="sec-title">⏰ ยอดขายรายชั่วโมง</div>
+          <div id="hourly-chart"></div>
+        </div>
+        <div>
+          <div class="sec-title">📅 ยอดรายวัน</div>
           <div id="daily-chart"></div>
         </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-s" onclick="exportCSV()" style="font-size:12px">📥 Export CSV</button>
+        <button class="btn-s" onclick="printReport()" style="font-size:12px">🖨️ พิมพ์รายงาน</button>
       </div>
     </div>
   </div>
@@ -250,14 +267,25 @@
           <button style="background:#E67E22;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;margin-left:8px" onclick="google.script.run.withSuccessHandler(function(r){alert('ลบซ้ำ: '+r.removed+' รายการ\nเหลือ: '+r.remaining+' สินค้า');location.reload()}).deduplicateProducts()">🔄 ลบสินค้าซ้ำ</button>
           <div style="font-size:11px;color:var(--t2);margin-top:4px">ลบ orders ทดสอบของวันนี้ทั้งหมด + reset counter</div>
         </div>
-        <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v2.0 Pro</div>
+        <hr>
+        <!-- QR Code Generator สำหรับโต๊ะ -->
+        <div style="margin-top:8px">
+          <div style="font-size:15px;font-weight:700;margin-bottom:12px">📱 QR Code เมนูโต๊ะ</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:12px">สร้าง QR Code สำหรับให้ลูกค้าสแกนดูเมนูและสั่งอาหารเอง</div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+            <button class="btn-p" onclick="generateAllTableQR()" style="padding:8px 18px;font-size:13px">📱 สร้าง QR ทุกโต๊ะ</button>
+            <button class="btn-s" onclick="printAllQR()" style="padding:8px 14px;font-size:12px">🖨️ พิมพ์ทั้งหมด</button>
+          </div>
+          <div id="qr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"></div>
+        </div>
+        <div style="color:var(--t2);font-size:11px;margin-top:8px">POS ร้านลาบบ้านสวน v3.1 Pro</div>
       </div>
     </div>
   </div>
 
   <!-- MODALS -->
   <div id="spice-modal" class="modal-ov" style="display:none">
-    <div class="modal">
+    <div class="cmodal">
       <h3 id="spice-title">เลือกระดับความเผ็ด</h3>
       <div class="spice-btns">
         <button class="spice-b" onclick="pickSpice('ไม่เผ็ด')">😊<br>ไม่เผ็ด</button>
@@ -275,7 +303,7 @@
   </div>
 
   <div id="prod-modal" class="modal-ov" style="display:none">
-    <div class="modal">
+    <div class="cmodal">
       <h3 id="pm-title">เพิ่มสินค้า</h3>
       <input type="hidden" id="pm-id">
       <div class="fg"><label>ชื่อสินค้า *</label><input type="text" id="pm-name"></div>
@@ -301,7 +329,7 @@
   </div>
 
   <div id="receipt-modal" class="modal-ov" style="display:none">
-    <div class="modal" style="max-width:340px">
+    <div class="cmodal" style="max-width:340px">
       <h3>🧾 ใบเสร็จ</h3>
       <div id="receipt-box"></div>
       <div id="qr-area" style="text-align:center;margin-bottom:12px;display:none">
@@ -320,7 +348,7 @@
   </div>
 
   <div id="order-modal" class="modal-ov" style="display:none">
-    <div class="modal" style="max-width:440px">
+    <div class="cmodal" style="max-width:440px">
       <h3 id="om-title">รายละเอียด Order</h3>
       <div id="om-body"></div>
       <div class="macts"><button class="btn-cancel" onclick="closeM('order-modal')">ปิด</button></div>

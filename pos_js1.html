@@ -33,17 +33,18 @@
 
     // LOAD ALL
     function loadAll() {
+      Swal.fire({ title:'กำลังโหลดข้อมูล...', html:'<div class="text-muted">เมนู, ตั้งค่า, รูปภาพ</div>', allowOutsideClick:false, didOpen:()=>{ Swal.showLoading() } });
+      // Show skeleton loading
+      var grid = document.getElementById('prod-grid');
+      grid.innerHTML = Array(8).fill('<div class="pc"><div class="pc-img-wrap skeleton" style="height:110px"></div><div class="pc-body"><div class="skeleton" style="height:14px;border-radius:4px;margin-bottom:6px"></div><div class="skeleton" style="height:18px;width:60%;margin:0 auto;border-radius:4px"></div></div></div>').join('');
+
       google.script.run.withSuccessHandler(function (d) {
-        if (d.debug) { document.title = 'DEBUG: ' + d.debug }
         products = d.products || []; settings = d.settings || {};
-        if (!products.length && d.debug) {
-          document.getElementById('prod-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#F39C12;font-size:12px;word-break:break-all">DEBUG: ' + d.debug + '</div>';
-        }
         applySettings(); renderCats(); renderProds(); renderProdTable(); fillTableSel();
+        Swal.close();
         nav('pos');
       }).withFailureHandler(function (e) {
-        toast('โหลดผิดพลาด: ' + (e && e.message ? e.message : 'unknown'), 'err');
-        document.getElementById('prod-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#E74C3C">❌ Error: ' + (e && e.message ? e.message : 'unknown') + '</div>';
+        Swal.fire({ icon:'error', title:'โหลดไม่สำเร็จ', text: e && e.message ? e.message : 'ไม่ทราบสาเหตุ', confirmButtonColor:'#FF6B35' });
       }).getAllData();
     }
     function applySettings() {
@@ -78,7 +79,7 @@
       renderProds();
     }
 
-    // PRODUCTS GRID
+    // PRODUCTS GRID — Image-first cards with emoji fallback
     function renderProds() {
       var q = (document.getElementById('sq').value || '').toLowerCase();
       var grid = document.getElementById('prod-grid');
@@ -87,15 +88,24 @@
         var qo = !q || p.name.toLowerCase().indexOf(q) !== -1;
         return co && qo;
       });
-      if (!list.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--t2)">ไม่พบเมนู</div>'; return }
+      if (!list.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--t2)"><i class="bi bi-search" style="font-size:32px;opacity:.3;display:block;margin-bottom:8px"></i>ไม่พบเมนู</div>'; return }
       grid.innerHTML = list.map(function (p) {
         var ic = cart.find(function (c) { return c.id === p.id });
         var oos = p.stock <= 0;
+        var visual;
+        if (p.image_data && p.image_data.indexOf('data:') === 0) {
+          visual = '<div class="pc-img-wrap"><img class="pc-img" src="' + p.image_data + '" alt="' + p.name + '" onerror="this.parentNode.innerHTML=\'<div class=em>' + (p.emoji || '🍽️') + '</div>\'"></div>';
+        } else {
+          visual = '<div class="em">' + (p.emoji || '🍽️') + '</div>';
+        }
         return '<div class="pc' + (oos ? ' out' : '') + '" onclick="addItem(\'' + p.id + '\')">' +
           (ic ? '<div class="badge">' + ic.qty + '</div>' : '') +
-          '<div class="em">' + p.emoji + '</div><div class="nm">' + p.name + '</div>' +
+          visual +
+          '<div class="pc-body">' +
+          '<div class="nm">' + p.name + '</div>' +
           '<div class="pr">฿' + p.price + '</div>' +
-          '<div class="st">' + (oos ? 'หมด' : p.unit) + '</div></div>';
+          '<div class="st">' + (oos ? 'หมด' : p.unit) + '</div>' +
+          '</div></div>';
       }).join('');
     }
 
@@ -107,7 +117,7 @@
       pushCart(p, '', '', '');
     }
     function openSpice(p) {
-      document.getElementById('spice-title').textContent = p.emoji + ' ' + p.name + ' — เลือกระดับเผ็ด';
+      document.getElementById('spice-title').textContent = (p.emoji || '🍽️') + ' ' + p.name + ' — เลือกระดับเผ็ด';
       document.querySelectorAll('.spice-b').forEach(function (b) { b.classList.remove('active') });
       document.querySelectorAll('.spice-b')[2].classList.add('active');
       var optsDiv = document.getElementById('spice-opts'); optsDiv.innerHTML = '';
@@ -138,6 +148,7 @@
       if (ex) { ex.qty++ }
       else { cart.push({ key: key, id: p.id, name: p.name, price: p.price + optExtra, basePrice: p.price, qty: 1, unit: p.unit, spice: spice, options: opts, note: note, emoji: p.emoji }) }
       renderCart(); renderProds();
+      toast('✅ ' + p.name, 'ok');
     }
 
     // CART
@@ -150,14 +161,14 @@
     function clearCart() { cart = []; renderCart(); renderProds() }
     function renderCart() {
       var el = document.getElementById('cart-items');
-      if (!cart.length) { el.innerHTML = '<div class="cart-empty"><div class="ic">🛒</div><div>เลือกเมนูเพื่อเริ่มสั่ง</div></div>'; document.getElementById('checkout-btn').disabled = true; calcTotal(); return }
+      if (!cart.length) { el.innerHTML = '<div class="cart-empty"><div class="ic"><i class="bi bi-cart3"></i></div><div>เลือกเมนูเพื่อเริ่มสั่ง</div></div>'; document.getElementById('checkout-btn').disabled = true; document.getElementById('send-kitchen-btn').disabled = true; calcTotal(); return }
       el.innerHTML = cart.map(function (i) {
         var meta = []; if (i.spice) meta.push('🌶️' + i.spice); if (i.note) meta.push('📝' + i.note);
-        return '<div class="ci"><div class="info"><div class="nm">' + i.emoji + ' ' + i.name + '</div>' + (meta.length ? '<div class="meta">' + meta.join(' ') + '</div>' : '') + '</div>' +
+        return '<div class="ci"><div class="info"><div class="nm">' + (i.emoji || '🍽️') + ' ' + i.name + '</div>' + (meta.length ? '<div class="meta">' + meta.join(' ') + '</div>' : '') + '</div>' +
           '<div class="ctrls"><button class="qb" onclick="changeQty(\'' + i.key.replace(/'/g, "\\'") + '\',-1)">−</button><div class="qty">' + i.qty + '</div><button class="qb" onclick="changeQty(\'' + i.key.replace(/'/g, "\\'") + '\',1)">+</button></div>' +
           '<div class="sub">฿' + (i.qty * i.price) + '</div></div>';
       }).join('');
-      document.getElementById('checkout-btn').disabled = false; calcTotal();
+      document.getElementById('checkout-btn').disabled = false; document.getElementById('send-kitchen-btn').disabled = false; calcTotal();
     }
     function calcTotal() {
       var sub = cart.reduce(function (s, i) { return s + i.qty * i.price }, 0);
@@ -166,6 +177,7 @@
       document.getElementById('v-sub').textContent = '฿' + sub;
       document.getElementById('v-grand').textContent = '฿' + grand;
       document.getElementById('checkout-btn').textContent = 'ชำระเงิน ฿' + grand;
+      document.getElementById('send-kitchen-btn').textContent = '🔥 ส่งครัว ฿' + grand;
     }
     function selPay(btn, m) { selPay_ = m; document.querySelectorAll('.pay-b').forEach(function (b) { b.classList.remove('active') }); btn.classList.add('active') }
     function applyStudentDisc() {

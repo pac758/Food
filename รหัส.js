@@ -39,6 +39,11 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// ── Get Web App URL for QR code generation ──
+function getWebAppUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
 // ── Google Sheet ID (fallback) ────────────────────────────────
 const SPREADSHEET_ID = '1V0j6xcnjrQ2XWy3MGHYM5NbX9yS14iHJn6Njm_LS1OY';
 
@@ -256,27 +261,288 @@ function getProducts() {
     .sort((a,b) => a.sort_order - b.sort_order);
 }
 
-// Customer menu - preload images server-side
-function getMenuForCustomer() {
-  const prods = getProducts().map(p => {
-    var imgData = '';
-    if (p.image_url && String(p.image_url).indexOf('drive:') === 0) {
-      try {
-        var fid = String(p.image_url).replace('drive:', '');
-        imgData = getImageData(fid);
-      } catch(e) { imgData = 'ERR:' + e.message; }
+// ── Image Cache (CacheService 6hr) ──────────────────────────
+function getCachedImageData_(fileId) {
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'img_' + fileId;
+  var cached = cache.get(cacheKey);
+  if (cached) return cached;
+  var data = getImageData(fileId);
+  
+  // If 403 "binary content" — this ID is a folder, not a file
+  if (data && data.indexOf('ERR:HTTP403') === 0 && data.indexOf('binary') !== -1) {
+    var realFileId = getFirstImageInFolder_(fileId);
+    if (realFileId) {
+      data = getImageData(realFileId);
     }
+  }
+  
+  if (data && data.indexOf('data:') === 0 && data.length < 95000) {
+    try { cache.put(cacheKey, data, 21600); } catch(e) {}
+  }
+  return data;
+}
+
+// ── FAST: Products without images (instant load) ─────────────
+function getProductsBasic() {
+  return getProducts().map(function(p) {
+    var imageUrl = p.image_url ? String(p.image_url).trim() : '';
+    var driveId = resolveDriveId_(imageUrl);
     return {
+      id: p.id, name: p.name, category: p.category,
+      price: p.price, stock: p.stock, unit: p.unit,
+      active: p.active, emoji: p.emoji,
+      spice_default: p.spice_default, options: p.options,
+      cost: p.cost, sort_order: p.sort_order,
+      image_url: imageUrl,
+      image_data: '',
+      _driveId: driveId || ''
+    };
+  });
+}
+
+// ── BATCH: Fetch multiple images in parallel via fetchAll ─────
+function getImageBatch(driveIds) {
+  if (!driveIds || !driveIds.length) return {};
+  var cache = CacheService.getScriptCache();
+  var token = ScriptApp.getOAuthToken();
+  var result = {};
+  var toFetch = [];
+  
+  // Check cache first
+  for (var i = 0; i < driveIds.length; i++) {
+    var id = driveIds[i];
+    if (!id) continue;
+    var cached = cache.get('img_' + id);
+    if (cached) {
+      result[id] = cached;
+    } else {
+      toFetch.push(id);
+    }
+  }
+  
+  if (!toFetch.length) return result;
+  
+  // Build parallel fetch requests
+  var requests = toFetch.map(function(fid) {
+    return {
+      url: 'https://www.googleapis.com/drive/v3/files/' + fid + '?alt=media',
+      headers: { 'Authorization': 'Bearer ' + token },
+      muteHttpExceptions: true,
+      _fileId: fid
+    };
+  });
+  
+  try {
+    var responses = UrlFetchApp.fetchAll(requests);
+    for (var j = 0; j < responses.length; j++) {
+      var resp = responses[j];
+      var fid = toFetch[j];
+      
+      if (resp.getResponseCode() === 200) {
+        var blob = resp.getBlob();
+        var bytes = blob.getBytes();
+        var type = blob.getContentType() || 'image/jpeg';
+        if (type === 'image/png' && bytes.length > 300000) {
+          try { blob = blob.getAs('image/jpeg'); bytes = blob.getBytes(); type = 'image/jpeg'; } catch(ce) {}
+        }
+        if (bytes.length <= 8000000) {
+          var data = 'data:' + type + ';base64,' + Utilities.base64Encode(bytes);
+          result[fid] = data;
+          if (data.length < 95000) {
+            try { cache.put('img_' + fid, data, 21600); } catch(e) {}
+          }
+        }
+      } else if (resp.getResponseCode() === 403) {
+        // Might be a folder — try to find image inside
+        var realId = getFirstImageInFolder_(fid);
+        if (realId) {
+          var imgData = getImageData(realId);
+          if (imgData && imgData.indexOf('data:') === 0) {
+            result[fid] = imgData;
+            if (imgData.length < 95000) {
+              try { cache.put('img_' + fid, imgData, 21600); } catch(e) {}
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {
+    Logger.log('getImageBatch fetchAll error: ' + e.message);
+  }
+  
+  return result;
+}
+
+// ── Products with Images (preloaded base64) — PARALLEL ───────
+function getProductsWithImages() {
+  var prods = getProducts();
+  var token = ScriptApp.getOAuthToken();
+  var cache = CacheService.getScriptCache();
+  
+  // Phase 1: Resolve all Drive IDs and check cache
+  var prodData = [];
+  var uncachedIds = [];
+  var uncachedIdx = [];
+  
+  for (var i = 0; i < prods.length; i++) {
+    var p = prods[i];
+    var imageUrl = p.image_url ? String(p.image_url).trim() : '';
+    var driveId = resolveDriveId_(imageUrl);
+    var imgData = '';
+    
+    if (driveId) {
+      var cached = cache.get('img_' + driveId);
+      if (cached) {
+        imgData = cached;
+      } else {
+        uncachedIds.push(driveId);
+        uncachedIdx.push(i);
+      }
+    } else if (imageUrl.indexOf('data:image') === 0) {
+      imgData = imageUrl;
+    }
+    
+    prodData.push({
+      id: p.id, name: p.name, category: p.category,
+      price: p.price, stock: p.stock, unit: p.unit,
+      active: p.active, emoji: p.emoji,
+      spice_default: p.spice_default, options: p.options,
+      cost: p.cost, sort_order: p.sort_order,
+      image_url: imageUrl,
+      image_data: imgData
+    });
+  }
+  
+  // Phase 2: Fetch all uncached images in PARALLEL
+  if (uncachedIds.length > 0) {
+    var batchResult = getImageBatch(uncachedIds);
+    for (var j = 0; j < uncachedIds.length; j++) {
+      var fid = uncachedIds[j];
+      if (batchResult[fid]) {
+        prodData[uncachedIdx[j]].image_data = batchResult[fid];
+      }
+    }
+  }
+  
+  return prodData;
+}
+
+
+// Helper: find first image file inside a Drive folder via API v3
+function getFirstImageInFolder_(folderId) {
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'fld_' + folderId;
+  var cachedId = cache.get(cacheKey);
+  if (cachedId) return cachedId;
+  
+  try {
+    var token = ScriptApp.getOAuthToken();
+    var apiUrl = 'https://www.googleapis.com/drive/v3/files'
+      + '?q=' + encodeURIComponent("'" + folderId + "' in parents and mimeType contains 'image/' and trashed=false")
+      + '&fields=files(id,name,mimeType)'
+      + '&pageSize=1'
+      + '&orderBy=name';
+    var resp = UrlFetchApp.fetch(apiUrl, {
+      headers: { 'Authorization': 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+    if (resp.getResponseCode() === 200) {
+      var json = JSON.parse(resp.getContentText());
+      if (json.files && json.files.length > 0) {
+        var fid = json.files[0].id;
+        cache.put(cacheKey, fid, 21600);
+        return fid;
+      }
+    }
+  } catch(e) {
+    Logger.log('getFirstImageInFolder_ error: ' + e.message);
+  }
+  return null;
+}
+
+/**
+ * Resolves a Google Drive URL or ID to a File ID.
+ * Supports: drive:ID, raw ID, folder URLs, file URLs, open?id= URLs
+ * Uses Drive API v3 for folder listing (bypasses Education domain DriveApp restrictions)
+ */
+function resolveDriveId_(url) {
+  if (!url) return null;
+  url = String(url).trim();
+  if (!url || url === '' || url === '-') return null;
+  
+  // 1. Existing drive: format
+  if (url.indexOf('drive:') === 0) return url.replace('drive:', '');
+  
+  // 2. Direct ID (no slashes, no dots, 20-60 chars)
+  if (/^[a-zA-Z0-9_-]{20,60}$/.test(url)) return url;
+
+  // 3. Drive File URL — check BEFORE folder to avoid false folder match
+  var fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]{20,60})/);
+  if (!fileMatch) fileMatch = url.match(/[?&]id=([a-zA-Z0-9_-]{20,60})/);
+  if (!fileMatch) fileMatch = url.match(/\/uc\?.*id=([a-zA-Z0-9_-]{20,60})/);
+  if (fileMatch) return fileMatch[1];
+
+  // 4. Drive Folder URL — list files via Drive API v3
+  var folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]{20,60})/);
+  if (folderMatch) {
+    var folderId = folderMatch[1];
+    return getFirstImageInFolder_(folderId);
+  }
+
+  return null;
+}
+
+// Customer menu - preload images server-side (uses cache + parallel)
+function getMenuForCustomer() {
+  var allProds = getProducts();
+  var cache = CacheService.getScriptCache();
+  var prodData = [];
+  var uncachedIds = [];
+  var uncachedIdx = [];
+  
+  for (var i = 0; i < allProds.length; i++) {
+    var p = allProds[i];
+    var imageUrl = p.image_url ? String(p.image_url).trim() : '';
+    var driveId = resolveDriveId_(imageUrl);
+    var imgData = '';
+    
+    if (driveId) {
+      var cached = cache.get('img_' + driveId);
+      if (cached) {
+        imgData = cached;
+      } else {
+        uncachedIds.push(driveId);
+        uncachedIdx.push(i);
+      }
+    } else if (imageUrl.indexOf('data:image') === 0) {
+      imgData = imageUrl;
+    }
+    
+    prodData.push({
       id: p.id, name: p.name, category: p.category,
       price: p.price, unit: p.unit, emoji: p.emoji,
       spice_default: p.spice_default, options: p.options,
-      image_data: imgData,
-      has_drive: p.image_url ? String(p.image_url).substring(0,40) : ''
-    };
-  });
-  const sett = getSettings();
-  return { products: prods, shopName: sett.shop_name || 'ลาบบ้านสวน' };
+      image_url: imageUrl,
+      image_data: imgData
+    });
+  }
+  
+  // Parallel fetch uncached images
+  if (uncachedIds.length > 0) {
+    var batchResult = getImageBatch(uncachedIds);
+    for (var j = 0; j < uncachedIds.length; j++) {
+      var fid = uncachedIds[j];
+      if (batchResult[fid]) {
+        prodData[uncachedIdx[j]].image_data = batchResult[fid];
+      }
+    }
+  }
+  
+  var sett = getSettings();
+  return { products: prodData, shopName: sett.shop_name || 'ลาบบ้านสวน' };
 }
+
 
 function getCategories() {
   return [...new Set(getProducts().map(p => p.category))];
@@ -348,7 +614,7 @@ function generateOrderId_() {
   SpreadsheetApp.flush();
   const d = new Date();
   const prefix = Utilities.formatDate(d, 'Asia/Bangkok', 'yyyyMMdd');
-  return prefix + '-' + String(num).padStart(4,'0');
+  return 'ORD-' + prefix + '-' + String(num).padStart(4,'0');
 }
 
 function saveOrder(orderData) {
@@ -357,6 +623,10 @@ function saveOrder(orderData) {
     const now = new Date();
     const date = Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd');
     const time = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm:ss');
+
+    // Use explicit status from client — no guessing from payment
+    const orderStatus = orderData.initialStatus || 'cooking';
+    const itemStatus = orderStatus === 'completed' ? 'served' : 'cooking';
 
     const oSh = getSheet_(SHEET_ORDERS);
     oSh.appendRow([
@@ -367,22 +637,27 @@ function saveOrder(orderData) {
       orderData.discount || 0,
       orderData.discountType || '',
       orderData.grandTotal,
-      orderData.payment || 'เงินสด',
+      orderData.payment || '',
       orderData.note || '',
       orderData.cashier || '',
-      'new',
+      orderStatus,
       orderData.customerCount || 1
     ]);
+    // Force orderId cell to text format to prevent Sheets auto-conversion
+    oSh.getRange(oSh.getLastRow(), 1).setNumberFormat('@');
 
     const iSh = getSheet_(SHEET_ITEMS);
     orderData.items.forEach(item => {
       iSh.appendRow([
         orderId, item.id, item.name, item.qty,
         item.price, item.qty * item.price,
-        item.spice || '', item.options || '', item.note || '', 'cooking'
+        item.spice || '', item.options || '', item.note || '', itemStatus
       ]);
+      iSh.getRange(iSh.getLastRow(), 1).setNumberFormat('@');
       updateStock(item.id, -item.qty);
     });
+
+    SpreadsheetApp.flush();
 
     const settings = getSettings();
     return {
@@ -401,13 +676,45 @@ function updateOrderStatus(orderId, status, tableNo) {
   const data = sh.getDataRange().getValues();
   const oid = String(orderId).trim();
   const tbl = tableNo ? String(tableNo).trim() : '';
-  // Reverse: find LATEST matching row
   for (let i = data.length - 1; i >= 1; i--) {
     var matchId = String(data[i][0]).trim() === oid;
     var matchTbl = !tbl || String(data[i][3]).trim().replace(/['"]/g,'') === tbl;
     if (matchId && matchTbl) {
       var oldStatus = String(data[i][12]);
       sh.getRange(i+1, 13).setValue(status);
+      
+      if (status === 'cooking') {
+        // Bulk-set all items to cooking when starting
+        var iSh = getSheet_(SHEET_ITEMS);
+        var iData = iSh.getDataRange().getValues();
+        for (var j = 1; j < iData.length; j++) {
+          if (String(iData[j][0]).trim() === oid) {
+            iSh.getRange(j+1, 10).setValue('cooking');
+          }
+        }
+      } else if (status === 'served') {
+        // Mark only remaining non-served items as served
+        var iSh2 = getSheet_(SHEET_ITEMS);
+        var iData2 = iSh2.getDataRange().getValues();
+        for (var j2 = 1; j2 < iData2.length; j2++) {
+          if (String(iData2[j2][0]).trim() === oid && String(iData2[j2][9]) !== 'served') {
+            iSh2.getRange(j2+1, 10).setValue('served');
+          }
+        }
+      } else if (status === 'completed') {
+        // Clear all notifications for this table
+        var tblStr = tbl || String(data[i][3]).trim().replace(/['"]/g,'');
+        try {
+          var nSh = getSheet_('Notifications');
+          var nData = nSh.getDataRange().getValues();
+          for (var k = nData.length - 1; k >= 1; k--) {
+            if (String(nData[k][0]).trim() === tblStr && String(nData[k][3]) !== 'dismissed') {
+              nSh.getRange(k+1, 4).setValue('dismissed');
+            }
+          }
+        } catch(ne) { /* Notifications sheet may not exist */ }
+      }
+      
       SpreadsheetApp.flush();
       return { success: true, oldStatus: oldStatus, newStatus: status, row: i+1, table: String(data[i][3]) };
     }
@@ -424,7 +731,6 @@ function cancelOrder(orderId, reason) {
       sh.getRange(i+1, 13).setValue('cancelled');
       const note = data[i][10] ? data[i][10] + ' | ยกเลิก: ' + reason : 'ยกเลิก: ' + reason;
       sh.getRange(i+1, 11).setValue(note);
-      // Restore stock
       const items = getOrderItems_(orderId);
       items.forEach(item => updateStock(item.product_id, item.qty));
       return { success: true };
@@ -434,48 +740,223 @@ function cancelOrder(orderId, reason) {
 }
 
 function getOrderItems_(orderId) {
-  const sh = getSheet_(SHEET_ITEMS);
-  const data = sh.getDataRange().getValues();
+  var sh = getSheet_(SHEET_ITEMS);
+  var data = sh.getDataRange().getValues();
   if (data.length <= 1) return [];
-  return data.slice(1)
-    .map((r, idx) => ({ r, rowIdx: idx + 2 }))
-    .filter(x => x.r[0] === orderId)
-    .map(x => ({
-      product_id: x.r[1], product_name: x.r[2], qty: Number(x.r[3]),
-      unit_price: Number(x.r[4]), subtotal: Number(x.r[5]),
-      spice: x.r[6], options: x.r[7], note: x.r[8],
-      item_status: x.r[9] || 'cooking',
-      row: x.rowIdx
-    }));
+  var oid = String(orderId).trim();
+  var results = [];
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === oid) {
+      results.push({
+        product_id: data[i][1], product_name: data[i][2], qty: Number(data[i][3]),
+        unit_price: Number(data[i][4]), subtotal: Number(data[i][5]),
+        spice: data[i][6], options: data[i][7], note: data[i][8],
+        item_status: String(data[i][9] || 'cooking'),
+        row: i + 1
+      });
+    }
+  }
+  return results;
 }
 
-// Update single item status
 function updateItemStatus(orderId, itemRow, newStatus) {
-  const iSh = getSheet_(SHEET_ITEMS);
+  var iSh = getSheet_(SHEET_ITEMS);
   iSh.getRange(itemRow, 10).setValue(newStatus);
-  
-  // Check if ALL items of this order are served
-  const data = iSh.getDataRange().getValues();
-  const orderItems = data.slice(1).filter(r => String(r[0]) === String(orderId));
-  const allServed = orderItems.length > 0 && orderItems.every(r => String(r[9]) === 'served');
-  
-  // Auto-update order status
+  var data = iSh.getDataRange().getValues();
+  var allServed = true;
+  var found = false;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === String(orderId).trim()) {
+      found = true;
+      if (String(data[i][9]) !== 'served') allServed = false;
+    }
+  }
+  if (!found) allServed = false;
   if (allServed) {
-    const oSh = getSheet_(SHEET_ORDERS);
-    const oData = oSh.getDataRange().getValues();
-    for (let i = oData.length - 1; i >= 1; i--) {
-      if (String(oData[i][0]).trim() === String(orderId).trim()) {
-        oSh.getRange(i+1, 13).setValue('served');
+    var oSh = getSheet_(SHEET_ORDERS);
+    var oData = oSh.getDataRange().getValues();
+    for (var j = oData.length - 1; j >= 1; j--) {
+      if (String(oData[j][0]).trim() === String(orderId).trim()) {
+        oSh.getRange(j+1, 13).setValue('served');
         break;
       }
     }
   }
-  
   SpreadsheetApp.flush();
   return { success: true, allServed: allServed };
 }
 
-// ── Kitchen Display ──────────────────────────────────────────
+// ── Customer Order Tracking ──────────────────────────────────
+function trackOrder(orderId, tableNo) {
+  try {
+    var oSh = getSheet_(SHEET_ORDERS);
+    var oData = oSh.getDataRange().getValues();
+    var oid = orderId ? String(orderId).trim() : '';
+    var tbl = tableNo ? String(tableNo).trim() : '';
+    var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+    var order = null;
+    var debugInfo = [];
+
+    if (oid) {
+      for (var i = oData.length - 1; i >= 1; i--) {
+        if (String(oData[i][0]).trim() === oid) {
+          order = { orderId: String(oData[i][0]), date: oData[i][1], time: oData[i][2], tableNo: String(oData[i][3]), status: String(oData[i][12] || 'new'), total: Number(oData[i][8]) };
+          break;
+        }
+      }
+    }
+
+    if (!order && tbl) {
+      for (var j = oData.length - 1; j >= 1; j--) {
+        var rowTbl = String(oData[j][3]).trim().replace(/['"]/g,'');
+        var rowStatus = String(oData[j][12] || '').trim();
+        var rowDate = oData[j][1] instanceof Date ? Utilities.formatDate(oData[j][1], 'Asia/Bangkok', 'yyyy-MM-dd') : String(oData[j][1]).trim();
+        if (rowTbl == tbl && rowDate === today && debugInfo.length < 5) {
+          debugInfo.push('r' + (j+1) + ':id=' + String(oData[j][0]).substring(0,20) + ',st=' + rowStatus);
+        }
+        if (rowTbl == tbl && rowDate === today && ['new','cooking','served','completed'].indexOf(rowStatus) !== -1) {
+          order = { orderId: String(oData[j][0]), date: rowDate, time: oData[j][2], tableNo: String(oData[j][3]), status: rowStatus, total: Number(oData[j][8]) };
+          break;
+        }
+      }
+    }
+
+    if (!order) {
+      for (var k = Math.max(1, oData.length - 5); k < oData.length; k++) {
+        debugInfo.push('r' + (k+1) + ':id=[' + String(oData[k][0]).substring(0,25) + ']|t=' + typeof oData[k][0] + '|st=' + String(oData[k][12]));
+      }
+      return { success: false, message: 'SEARCH:oid=[' + oid + ']tbl=[' + tbl + ']today=' + today + '|ROWS=' + oData.length + '|' + debugInfo.join('|') };
+    }
+
+    var rawItems = getOrderItems_(order.orderId);
+    var items = [];
+    for (var m = 0; m < rawItems.length; m++) {
+      items.push({ name: rawItems[m].product_name, qty: rawItems[m].qty, price: rawItems[m].unit_price, subtotal: rawItems[m].subtotal, spice: rawItems[m].spice, note: rawItems[m].note, item_status: rawItems[m].item_status || 'cooking' });
+    }
+    var servedCount = 0;
+    for (var n = 0; n < items.length; n++) { if (items[n].item_status === 'served') servedCount++; }
+    var allServed = items.length > 0 && servedCount === items.length;
+
+    return { success: true, order: order, items: items, allServed: allServed, servedCount: servedCount };
+  } catch(e) {
+    return { success: false, message: 'ERR:' + String(e) };
+  }
+}
+
+function getOrderTracking(orderId) {
+  try {
+    var oSh = getSheet_(SHEET_ORDERS);
+    var oData = oSh.getDataRange().getValues();
+    var oid = orderId ? String(orderId).trim() : '';
+    var order = null;
+    for (var i = oData.length - 1; i >= 1; i--) {
+      if (String(oData[i][0]).trim() === oid) {
+        order = {
+          orderId: String(oData[i][0]),
+          date: String(oData[i][1]),
+          time: String(oData[i][2]),
+          tableNo: String(oData[i][3]),
+          status: String(oData[i][12] || 'new'),
+          total: Number(oData[i][8])
+        };
+        break;
+      }
+    }
+    if (!order) {
+      var dbg = [];
+      for (var k = Math.max(1, oData.length - 5); k < oData.length; k++) {
+        dbg.push('r' + (k+1) + ':[' + String(oData[k][0]).substring(0,25) + ']t=' + typeof oData[k][0]);
+      }
+      return { success: false, message: 'ID_SEARCH:[' + oid + '] rows=' + oData.length + ' | ' + dbg.join(' | ') };
+    }
+    var items = getOrderItems_(String(order.orderId));
+    var mapped = [];
+    for (var m = 0; m < items.length; m++) {
+      mapped.push({ name: items[m].product_name, qty: items[m].qty, price: items[m].unit_price, subtotal: items[m].subtotal, spice: items[m].spice, note: items[m].note, item_status: items[m].item_status || 'cooking' });
+    }
+    var sc = 0;
+    for (var n = 0; n < mapped.length; n++) { if (mapped[n].item_status === 'served') sc++; }
+    return { success: true, order: order, items: mapped, allServed: mapped.length > 0 && sc === mapped.length, servedCount: sc };
+  } catch(e) {
+    return { success: false, message: 'TRACK_ERR:' + String(e) };
+  }
+}
+
+function getOrderTrackingByTable(tableNo) {
+  try {
+    var oSh = getSheet_(SHEET_ORDERS);
+    var oData = oSh.getDataRange().getValues();
+    var tbl = tableNo ? String(tableNo).trim() : '';
+    var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+    var order = null;
+    var dbg = [];
+    for (var j = oData.length - 1; j >= 1; j--) {
+      var rowTbl = String(oData[j][3]).trim().replace(/['"]/g,'');
+      var rowSt = String(oData[j][12] || '').trim();
+      var rowDt = oData[j][1] instanceof Date ? Utilities.formatDate(oData[j][1], 'Asia/Bangkok', 'yyyy-MM-dd') : String(oData[j][1]).trim();
+      if (rowTbl == tbl && rowDt === today && dbg.length < 5) {
+        dbg.push('r' + (j+1) + ':[' + String(oData[j][0]).substring(0,25) + ']st=' + rowSt);
+      }
+      if (rowTbl == tbl && rowDt === today && ['new','cooking','served','completed'].indexOf(rowSt) !== -1) {
+        order = { orderId: String(oData[j][0]), date: rowDt, time: String(oData[j][2]), tableNo: String(oData[j][3]), status: rowSt, total: Number(oData[j][8]) };
+        break;
+      }
+    }
+    if (!order) return { success: false, message: 'TBL_SEARCH:[' + tbl + ']today=' + today + '|rows=' + oData.length + '|' + dbg.join('|') };
+    var items = getOrderItems_(String(order.orderId));
+    var mapped = [];
+    for (var m = 0; m < items.length; m++) {
+      mapped.push({ name: items[m].product_name, qty: items[m].qty, price: items[m].unit_price, subtotal: items[m].subtotal, spice: items[m].spice, note: items[m].note, item_status: items[m].item_status || 'cooking' });
+    }
+    var sc = 0;
+    for (var n = 0; n < mapped.length; n++) { if (mapped[n].item_status === 'served') sc++; }
+    return { success: true, order: order, items: mapped, allServed: mapped.length > 0 && sc === mapped.length, servedCount: sc };
+  } catch(e) {
+    return { success: false, message: 'TBL_ERR:' + String(e) };
+  }
+}
+
+
+// Customer calls staff
+function callStaff(tableNo, type) {
+  const sh = getSheet_('Notifications');
+  const now = new Date();
+  const time = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm:ss');
+  const date = Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd');
+  sh.appendRow([date, time, tableNo, type, 'pending']);
+  return { success: true, time: time };
+}
+
+// Get pending notifications for POS
+function getNotifications() {
+  var sh = getSheet_('Notifications');
+  var data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+  var results = [];
+  for (var i = 1; i < data.length; i++) {
+    var rowDate = data[i][0] instanceof Date ? Utilities.formatDate(data[i][0], 'Asia/Bangkok', 'yyyy-MM-dd') : String(data[i][0]).trim();
+    var rowStatus = String(data[i][4] || '').trim();
+    if (rowDate === today && rowStatus === 'pending') {
+      results.push({
+        row: i + 1,
+        date: rowDate,
+        time: String(data[i][1]),
+        tableNo: String(data[i][2]),
+        type: String(data[i][3]),
+        status: rowStatus
+      });
+    }
+  }
+  return results;
+}
+
+// Dismiss notification
+function dismissNotification(row) {
+  const sh = getSheet_('Notifications');
+  sh.getRange(row, 5).setValue('done');
+  return { success: true };
+}
 function getKitchenOrders() {
   const sh = getSheet_(SHEET_ORDERS);
   const data = sh.getDataRange().getValues();
@@ -485,11 +966,17 @@ function getKitchenOrders() {
   const activeStatuses = ['new','cooking'];
 
   const orders = data.slice(1)
-    .filter(r => r[1] === today && activeStatuses.includes(r[12]))
+    .filter(r => {
+      let rowDate = r[1];
+      if (rowDate instanceof Date) {
+        rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+      }
+      return String(rowDate) === today && activeStatuses.includes(String(r[12]));
+    })
     .map(r => ({
       orderId: r[0], date: r[1], time: r[2],
       tableNo: r[3], orderType: r[4],
-      status: r[12],
+      status: String(r[12]),
       items: getOrderItems_(r[0])
     }));
 
@@ -766,33 +1253,26 @@ function getTodayReport() {
   return getReport(today, today);
 }
 
-// ── All Data (initial load) ──────────────────────────────────
+// ── All Data (initial load) — with preloaded images ──────────
 function getAllData() {
-  var debug = [];
   var prods = [];
   var sett = {};
-  try {
-    var ss = getSS_();
-    debug.push('SS=' + ss.getName());
-    var sh = ss.getSheetByName('Products');
-    debug.push('Sheet=' + (sh ? 'found,rows=' + sh.getLastRow() : 'NOT FOUND'));
-    if (sh && sh.getLastRow() > 1) {
-      var d = sh.getDataRange().getValues();
-      debug.push('data=' + d.length + ',hdr=' + JSON.stringify(d[0]).substring(0,80));
-    }
-  } catch(ex) { debug.push('dbg err=' + ex); }
-  try { prods = getProducts(); debug.push('prods=' + prods.length); } catch(e) { debug.push('getProd err=' + e); }
-  if (!prods.length) {
-    try { setupSheets(); debug.push('setup done'); } catch(e) { debug.push('setup err=' + e); }
-   try { prods = getProducts(); debug.push('retry prods=' + prods.length); } catch(e) { debug.push('retry err=' + e); }
+  try { prods = getProductsWithImages(); } catch(e) {
+    try { prods = getProducts(); } catch(e2) {}
   }
-  try { sett = getSettings(); } catch(e) { debug.push('sett err=' + e); }
+  if (!prods.length) {
+    try { setupSheets(); } catch(e) {}
+    try { prods = getProductsWithImages(); } catch(e) {
+      try { prods = getProducts(); } catch(e2) {}
+    }
+  }
+  try { sett = getSettings(); } catch(e) {}
   // Auto-fix Orders header
   try {
     var oSh = getSS_().getSheetByName(SHEET_ORDERS);
     if (oSh) oSh.getRange(1,1,1,14).setValues([['order_id','date','time','table_no','order_type','total','discount','discount_type','grand_total','payment','note','cashier','status','customer_count']]);
   } catch(e) {}
-  return { products: prods, settings: sett, tables: [], todayReport: {}, debug: debug.join(' | ') };
+  return { products: prods, settings: sett, tables: [], todayReport: {} };
 }
 
 function debugTableOrders(tableNo) {
@@ -1031,9 +1511,34 @@ function testImageLoad() {
   var prods = getProducts().filter(function(p){ return p.image_url; });
   if (!prods.length) return 'ไม่มีสินค้าที่มี image_url';
   var p = prods[0];
-  var fid = String(p.image_url).replace('drive:', '');
-  Logger.log('Testing product: ' + p.id + ' | image_url: ' + p.image_url + ' | fileId: ' + fid);
+  var fid = resolveDriveId_(p.image_url);
+  Logger.log('Testing product: ' + p.id + ' | image_url: ' + p.image_url + ' | resolvedId: ' + fid);
+  if (!fid) return 'Could not resolve Drive ID for: ' + p.image_url;
   var result = getImageData(fid);
   Logger.log('Result: ' + p.id + ' | dataLen: ' + result.length + ' | prefix: ' + result.substring(0, 50));
   return 'product: ' + p.id + ' | dataLen: ' + result.length + ' | prefix: ' + result.substring(0, 50);
+}
+
+// DIAGNOSTIC: Test URL resolution for ALL products that have image_url
+function testResolveAllUrls() {
+  var prods = getProducts().filter(function(p){ return p.image_url; });
+  var results = [];
+  for (var i = 0; i < prods.length; i++) {
+    var p = prods[i];
+    var url = String(p.image_url).trim();
+    var resolved = resolveDriveId_(url);
+    var status = 'NO_RESOLVE';
+    if (resolved) {
+      try {
+        var imgData = getImageData(resolved);
+        status = imgData.indexOf('data:') === 0 ? 'OK (len=' + imgData.length + ')' : imgData.substring(0, 80);
+      } catch(e) {
+        status = 'FETCH_ERR: ' + e.message;
+      }
+    }
+    var line = p.id + ' | url=' + url.substring(0, 60) + ' | resolved=' + resolved + ' | ' + status;
+    Logger.log(line);
+    results.push(line);
+  }
+  return results.join('\n');
 }
