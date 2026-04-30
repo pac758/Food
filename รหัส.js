@@ -267,14 +267,45 @@ function getProducts() {
     .sort((a, b) => a.sort_order - b.sort_order);
 }
 
+function resolveDriveId_(url) {
+  if (!url) return '';
+  var s = String(url).trim();
+  if (s.indexOf('drive:') === 0) return s.replace('drive:', '');
+  var match = s.match(/[?&]id=([^&]+)/);
+  if (match) return match[1];
+  match = s.match(/\/d\/([^/]+)/);
+  if (match) return match[1];
+  return s;
+}
+
+function getProductsWithImages() {
+  return getProducts().map(function(p) {
+    var imgData = '';
+    if (p.image_url) {
+      try {
+        var fid = resolveDriveId_(p.image_url);
+        if (fid) imgData = getImageData(fid);
+      } catch (e) {}
+    }
+    return {
+      id: p.id, name: p.name, category: p.category,
+      price: p.price, stock: p.stock, unit: p.unit, active: p.active,
+      emoji: p.emoji, spice_default: p.spice_default, options: p.options,
+      cost: p.cost, sort_order: p.sort_order,
+      image_data: imgData,
+      image_url: p.image_url
+    };
+  });
+}
+
 // Customer menu - preload images server-side
 function getMenuForCustomer() {
   const prods = getProducts().map(p => {
     var imgData = '';
-    if (p.image_url && String(p.image_url).indexOf('drive:') === 0) {
+    if (p.image_url) {
       try {
-        var fid = String(p.image_url).replace('drive:', '');
-        imgData = getImageData(fid);
+        var fid = resolveDriveId_(p.image_url);
+        if (fid) imgData = getImageData(fid);
       } catch (e) { imgData = 'ERR:' + e.message; }
     }
     return {
