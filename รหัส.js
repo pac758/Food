@@ -1036,6 +1036,46 @@ function getTableDetail(orderId) {
   return { items: getOrderItems_(orderId) };
 }
 
+function getTableDetailByTableNo(tableNo) {
+  try {
+    var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+    var oSh = getSheet_(SHEET_ORDERS);
+    var orders = oSh.getDataRange().getValues();
+    var tblStr = String(tableNo).trim();
+    
+    // Find all active orders for this table today
+    var activeOrders = orders.slice(1).filter(function(r) {
+      var rowDate = r[1];
+      if (rowDate instanceof Date) rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+      return String(rowDate) === today && 
+             String(r[3]).trim().replace(/['"]/g, '') === tblStr && 
+             ['new', 'cooking', 'served'].indexOf(String(r[12])) !== -1;
+    });
+    
+    var result = { orders: [], allItems: [], orderCount: activeOrders.length };
+    
+    activeOrders.forEach(function(r, idx) {
+      var oid = String(r[0]);
+      var items = getOrderItems_(oid);
+      items.forEach(function(item) {
+        item.orderIdx = idx + 1;
+        item.fromOrderId = oid;
+      });
+      result.orders.push({
+        orderId: oid,
+        orderIdx: idx + 1,
+        status: String(r[12]),
+        total: Number(r[8]) || 0
+      });
+      result.allItems = result.allItems.concat(items);
+    });
+    
+    return result;
+  } catch(e) {
+    return { orders: [], allItems: [], orderCount: 0, error: String(e) };
+  }
+}
+
 function countOrderItems_(orderId) {
   try {
     const sh = getSheet_(SHEET_ITEMS);
