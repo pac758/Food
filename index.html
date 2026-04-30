@@ -1815,27 +1815,56 @@ tr:hover td { background:rgba(255,255,255,.02) }
       }).updateItemStatus(orderId, itemRow, newStatus);
     }
 
-    // Complete ALL orders for a table
+    // Complete ALL orders for a table — with receipt
     function completeTableUI(tblNo) {
       closeM('tbl-modal');
-      Swal.fire({ title:'กำลังเก็บเงิน...', html:'<div style="color:var(--t2)">ปิดทุก order โต๊ะ ' + tblNo + '</div>', allowOutsideClick:true, didOpen:function(){ Swal.showLoading() } });
-      var safetyTimer = setTimeout(function(){ Swal.close(); Swal.fire({ icon:'warning', title:'ใช้เวลานาน', text:'ลองรีเฟรชหน้า', confirmButtonColor:'#FF6B35' }) }, 10000);
-      google.script.run
-        .withSuccessHandler(function(r) {
-          clearTimeout(safetyTimer);
+      // First load all items for receipt
+      Swal.fire({ title:'กำลังโหลดรายการ...', allowOutsideClick:true, didOpen:function(){ Swal.showLoading() } });
+      google.script.run.withSuccessHandler(function(detail) {
+        Swal.close();
+        // Build receipt
+        var items = (detail && detail.allItems) || [];
+        var orders = (detail && detail.orders) || [];
+        var grandTotal = 0;
+        orders.forEach(function(o){ grandTotal += o.total || 0; });
+
+        var w = 32, ln = '─'.repeat(w);
+        var ct = function(s) { return ' '.repeat(Math.max(0, Math.floor((w - s.length) / 2))) + s };
+        var shopName = (settings && settings.shop_name) || 'ลาบบ้านสวน';
+        var now = new Date();
+        var dateStr = now.toLocaleDateString('th-TH');
+        var timeStr = now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+
+        var rc = ct(shopName) + '\n' + ct('ใบเสร็จรับเงิน') + '\n' + ln + '\n';
+        rc += 'วันที่: ' + dateStr + '  เวลา: ' + timeStr + '\n';
+        rc += 'โต๊ะ: ' + tblNo + '  (' + orders.length + ' ออร์เดอร์)\n' + ln + '\n';
+
+        items.forEach(function(i) {
+          rc += i.product_name + (i.spice ? ' (' + i.spice + ')' : '') + '\n';
+          rc += ('  ' + i.qty + ' x ฿' + (i.price || 0)).padEnd(w - 8) + '฿' + (i.subtotal || 0) + '\n';
+        });
+        rc += ln + '\n' + ('ยอดสุทธิ').padEnd(w - 10) + '฿' + grandTotal + '\n';
+        rc += ln + '\n' + ct('ขอบคุณที่อุดหนุน 🙏') + '\n' + ct('มาอีกนะครับ/ค่ะ ~') + '\n';
+        if (settings && settings.shop_phone) rc += ct('📱 ' + settings.shop_phone) + '\n';
+
+        document.getElementById('receipt-box').textContent = rc;
+        document.getElementById('qr-area').style.display = 'none';
+        document.getElementById('receipt-modal').style.display = 'flex';
+
+        // Now complete the table in background
+        google.script.run.withSuccessHandler(function(r) {
           if (r && r.success) {
             delete _tblNotifs[String(tblNo)];
-            Swal.fire({ icon:'success', title:'💰 เก็บเงินเรียบร้อย', html:'ปิด ' + r.updatedOrders + ' ออร์เดอร์ โต๊ะ ' + tblNo + ' ว่างแล้ว', timer:2000, showConfirmButton:false });
-          } else {
-            Swal.fire({ icon:'error', title:'ไม่สำเร็จ', text:r&&r.message||'', confirmButtonColor:'#FF6B35' });
+            toast('💰 เก็บเงินเรียบร้อย — ' + r.updatedOrders + ' ออร์เดอร์', 'ok');
           }
           loadTables();
-        })
-        .withFailureHandler(function(e) {
-          clearTimeout(safetyTimer);
-          Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text:e&&e.message||String(e), confirmButtonColor:'#FF6B35' });
-        })
-        .completeTable(tblNo);
+        }).withFailureHandler(function(e) {
+          toast('❌ เก็บเงินไม่สำเร็จ: ' + (e&&e.message||''), 'err');
+        }).completeTable(tblNo);
+
+      }).withFailureHandler(function(e) {
+        Swal.fire({ icon:'error', title:'โหลดรายการไม่ได้', text:e&&e.message||'', confirmButtonColor:'#FF6B35' });
+      }).getTableDetailByTableNo(tblNo);
     }
 
     function updateTblStatus(oid, st, tblNo) {
