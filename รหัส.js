@@ -815,12 +815,21 @@ function getOrderHistory(days) {
 
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - (days || 7));
-  cutoff.setHours(0, 0, 0, 0);
+  const cutoffStr = Utilities.formatDate(cutoff, 'Asia/Bangkok', 'yyyy-MM-dd');
 
   return data.slice(1)
-    .filter(r => new Date(r[1]) >= cutoff)
+    .filter(r => {
+      var rowDate = r[1];
+      if (rowDate instanceof Date) {
+        rowDate = Utilities.formatDate(rowDate, 'Asia/Bangkok', 'yyyy-MM-dd');
+      } else {
+        rowDate = String(rowDate).trim();
+      }
+      r._fmtDate = rowDate; // store for map
+      return rowDate >= cutoffStr;
+    })
     .map(r => ({
-      orderId: r[0], date: r[1], time: r[2],
+      orderId: r[0], date: r._fmtDate, time: r[2],
       tableNo: r[3], orderType: r[4],
       total: Number(r[5]), discount: Number(r[6]),
       discountType: r[7], grandTotal: Number(r[8]),

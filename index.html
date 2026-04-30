@@ -1667,7 +1667,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
     function loadOrders() {
       google.script.run.withSuccessHandler(function (ords) {
         var tb = document.getElementById('ord-tbody');
-        if (!ords.length) { tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--t2)">ไม่มีข้อมูล</td></tr>'; return }
+        if (!ords || !ords.length) { tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--t2)">ไม่มีข้อมูล</td></tr>'; return }
         tb.innerHTML = ords.map(function (o) {
           var stCls = { 'new': 'bdg-o', 'cooking': 'bdg-w', 'served': 'bdg-b', 'paid': 'bdg-g', 'cancelled': 'bdg-r' }[o.status] || 'bdg-b';
           var stTxt = { 'new': 'ใหม่', 'cooking': 'กำลังทำ', 'served': 'เสิร์ฟแล้ว', 'paid': 'ชำระแล้ว', 'cancelled': 'ยกเลิก' }[o.status] || o.status;
@@ -1678,6 +1678,8 @@ tr:hover td { background:rgba(255,255,255,.02) }
             '<td><button class="abtn" onclick="viewOrder(\'' + o.orderId + '\')">ดู</button>' +
             (o.status !== 'cancelled' && o.status !== 'paid' ? '<button class="abtn" onclick="markPaid(\'' + o.orderId + '\')">✅</button><button class="abtn del" onclick="cancelOrd(\'' + o.orderId + '\')">✕</button>' : '') + '</td></tr>';
         }).join('');
+      }).withFailureHandler(function(err) {
+        document.getElementById('ord-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:16px;color:red">เกิดข้อผิดพลาด: ' + (err&&err.message||'ไม่สามารถโหลดข้อมูลได้') + '</td></tr>';
       }).getOrderHistory(7);
     }
     function viewOrder(oid) {
