@@ -304,7 +304,7 @@ function getMenuForCustomer() {
     var thumbUrl = '';
     if (p.image_url) {
       var fid = resolveDriveId_(p.image_url);
-      if (fid) thumbUrl = 'https://lh3.googleusercontent.com/d/' + fid + '=s400';
+      if (fid) thumbUrl = 'https://drive.google.com/thumbnail?id=' + fid + '&sz=w400';
     }
     return {
       id: p.id, name: p.name, category: p.category,
@@ -339,8 +339,8 @@ function getAllImagesMap() {
       try {
         var fid = resolveDriveId_(p.image_url);
         if (fid) {
-          // Return direct Google CDN thumbnail URL (no server processing needed!)
-          map[p.id] = 'https://lh3.googleusercontent.com/d/' + fid + '=s300';
+          // Return direct Google Drive thumbnail URL
+          map[p.id] = 'https://drive.google.com/thumbnail?id=' + fid + '&sz=w300';
         }
       } catch(e) {}
     }
