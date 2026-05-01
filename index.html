@@ -1023,7 +1023,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
   <div id="spice-modal" class="modal-ov" style="display:none">
     <div class="cmodal">
       <h3 id="spice-title">เลือกระดับความเผ็ด</h3>
-      <div class="spice-btns">
+      <div id="spice-btns-container" class="spice-btns">
         <button class="spice-b" onclick="pickSpice('ไม่เผ็ด')">😊<br>ไม่เผ็ด</button>
         <button class="spice-b" onclick="pickSpice('เผ็ดน้อย')">🌶️<br>น้อย</button>
         <button class="spice-b active" onclick="pickSpice('กลาง')">🌶️🌶️<br>กลาง</button>
@@ -1419,13 +1419,17 @@ tr:hover td { background:rgba(255,255,255,.02) }
     function addItem(id) {
       var p = products.find(function (x) { return x.id === id });
       if (!p) return;
-      if (p.spice_default) { pendingItem = p; openSpice(p); return }
+      if (p.spice_default || p.options) { pendingItem = p; openSpice(p); return }
       pushCart(p, '', '', '');
     }
     function openSpice(p) {
-      document.getElementById('spice-title').textContent = (p.emoji || '🍽️') + ' ' + p.name + ' — เลือกระดับเผ็ด';
+      var hasSpice = !!p.spice_default;
+      document.getElementById('spice-title').textContent = (p.emoji || '🍽️') + ' ' + p.name + (hasSpice ? ' — เลือกระดับเผ็ด' : ' — เลือกเพิ่มเติม');
+      document.getElementById('spice-btns-container').style.display = hasSpice ? 'flex' : 'none';
+      
       document.querySelectorAll('.spice-b').forEach(function (b) { b.classList.remove('active') });
-      document.querySelectorAll('.spice-b')[2].classList.add('active');
+      document.querySelectorAll('.spice-b')[2].classList.add('active'); // default to Medium
+      
       var optsDiv = document.getElementById('spice-opts'); optsDiv.innerHTML = '';
       if (p.options) {
         var parts = p.options.split(',');
@@ -1440,7 +1444,10 @@ tr:hover td { background:rgba(255,255,255,.02) }
     function pickSpice(lv) { document.querySelectorAll('.spice-b').forEach(function (b) { b.classList.toggle('active', b.textContent.indexOf(lv) !== -1) }) }
     function confirmAdd() {
       if (!pendingItem) return;
-      var sp = ''; document.querySelectorAll('.spice-b.active').forEach(function (b) { sp = b.textContent.split('\n').pop().trim() });
+      var sp = ''; 
+      if (pendingItem.spice_default) {
+        document.querySelectorAll('.spice-b.active').forEach(function (b) { sp = b.textContent.split('\n').pop().trim() });
+      }
       var opts = []; document.querySelectorAll('.opt-cb:checked').forEach(function (cb) { opts.push(cb.value) });
       var note = document.getElementById('item-note').value.trim();
       pushCart(pendingItem, sp, opts.join(','), note);

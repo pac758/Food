@@ -204,13 +204,14 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--dk);color:var(-
 <div class="spice-ov" id="spice-ov">
   <div class="spice-box">
     <div class="spice-title" id="spice-item-name">เลือกความเผ็ด</div>
-    <div class="spice-grid">
+    <div class="spice-grid" id="sp-grid">
       <div class="sp-btn" onclick="pickSp(this,'ไม่เผ็ด')">😊<br>ไม่เผ็ด</div>
       <div class="sp-btn" onclick="pickSp(this,'เผ็ดน้อย')">🌶️<br>น้อย</div>
       <div class="sp-btn active" onclick="pickSp(this,'กลาง')">🌶️🌶️<br>กลาง</div>
       <div class="sp-btn" onclick="pickSp(this,'แซ่บ')">🔥<br>แซ่บ</div>
       <div class="sp-btn" onclick="pickSp(this,'บ้านสวน')">💀<br>บ้านสวน</div>
     </div>
+    <div id="sp-opts" style="margin-bottom:14px;display:flex;flex-direction:column;gap:8px"></div>
     <input class="spice-note" id="sp-note" placeholder="โน้ตเพิ่มเติม เช่น ไม่ใส่ผักชี">
     <div class="spice-acts">
       <button class="sp-cancel" onclick="cancelSpice()">ยกเลิก</button>
@@ -332,12 +333,27 @@ function addItem(idx) {
   var items = currentCat === 'all' ? products : products.filter(function(p){return p.category === currentCat});
   var p = items[idx];
   if (!p) return;
-  pendingItem = { id: p.id, name: p.name, price: p.price, qty: 1, spice: '', note: '', unit: p.unit };
-  if (p.spice_default) {
+  pendingItem = { id: p.id, name: p.name, price: p.price, basePrice: p.price, qty: 1, spice: '', options: '', note: '', unit: p.unit };
+  if (p.spice_default || p.options) {
+    var hasSpice = !!p.spice_default;
     selectedSpice = p.spice_default || 'กลาง';
-    document.getElementById('spice-item-name').textContent = (p.emoji||'🍽️') + ' ' + p.name;
+    document.getElementById('spice-item-name').textContent = (p.emoji||'🍽️') + ' ' + p.name + (hasSpice ? ' — เลือกระดับเผ็ด' : ' — เลือกตัวเลือกเพิ่มเติม');
+    document.getElementById('sp-grid').style.display = hasSpice ? 'grid' : 'none';
+    
     document.querySelectorAll('.sp-btn').forEach(function(b){b.classList.remove('active')});
     document.querySelectorAll('.sp-btn').forEach(function(b){ if(b.textContent.includes(selectedSpice)) b.classList.add('active') });
+    
+    var optsDiv = document.getElementById('sp-opts');
+    optsDiv.innerHTML = '';
+    if (p.options) {
+      var parts = p.options.split(',');
+      parts.forEach(function(o) {
+        var kv = o.split(':');
+        if (kv.length === 2) {
+          optsDiv.innerHTML += '<label style="display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer"><input type="checkbox" class="opt-cb" value="'+o+'"> '+kv[0]+' (+฿'+kv[1]+')</label>';
+        }
+      });
+    }
     document.getElementById('sp-note').value = '';
     document.getElementById('spice-ov').classList.add('show');
   } else {
@@ -356,8 +372,23 @@ function pickSp(el, level) {
 function cancelSpice() { pendingItem = null; document.getElementById('spice-ov').classList.remove('show') }
 function confirmSpice() {
   if (!pendingItem) return;
-  pendingItem.spice = selectedSpice;
-  pendingItem.note = document.getElementById('sp-note').value.trim();
+  var sp = '';
+  if (document.getElementById('sp-grid').style.display !== 'none') {
+    sp = selectedSpice;
+  }
+  var opts = [];
+  document.querySelectorAll('.opt-cb:checked').forEach(function(cb) { opts.push(cb.value) });
+  var note = document.getElementById('sp-note').value.trim();
+  
+  var optExtra = 0;
+  var optsStr = opts.join(',');
+  if (optsStr) { optsStr.split(',').forEach(function(o) { var kv = o.split(':'); if(kv[1]) optExtra += Number(kv[1]) }) }
+  
+  pendingItem.spice = sp;
+  pendingItem.options = optsStr;
+  pendingItem.note = note;
+  pendingItem.price = pendingItem.basePrice + optExtra;
+  
   cart.push(pendingItem);
   showToast('✅ เพิ่ม '+pendingItem.name+' แล้ว');
   pendingItem = null;
@@ -382,6 +413,9 @@ function renderCartItems() {
   area.innerHTML = cart.map(function(c, i) {
     var meta = [];
     if (c.spice) meta.push('🌶️ '+c.spice);
+    if (c.options) {
+      c.options.split(',').forEach(function(o) { meta.push('• '+o.split(':')[0]) });
+    }
     if (c.note) meta.push('📝 '+c.note);
     return '<div class="cart-item">' +
       '<div class="cart-item-info">' +
@@ -422,7 +456,7 @@ function submitOrder() {
   var total = cart.reduce(function(s,i){return s+i.qty*i.price},0);
   var orderData = {
     tableNo: tableNo, orderType: 'dine-in',
-    items: cart.map(function(c){ return { id:c.id, name:c.name, price:c.price, qty:c.qty, spice:c.spice, note:c.note } }),
+    items: cart.map(function(c){ return { id:c.id, name:c.name, price:c.price, qty:c.qty, spice:c.spice, options:c.options||'', note:c.note } }),
     total: total, discount: 0, discountType: '', grandTotal: total,
     payment: '', note: '', cashier: 'ลูกค้าสั่งเอง', customerCount: 1, initialStatus: 'cooking'
   };
