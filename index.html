@@ -8,21 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script>
-  var firebaseConfig = {
-    apiKey: "AIzaSyAyRVeRtoRn5XD2aZbFWCmYp0Sz4uf1Ld0",
-    authDomain: "posfood-83d3e.firebaseapp.com",
-    databaseURL: "https://posfood-83d3e-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "posfood-83d3e",
-    storageBucket: "posfood-83d3e.firebasestorage.app",
-    messagingSenderId: "924445525936",
-    appId: "1:924445525936:web:8e384e1eff3bf98553b875"
-  };
-  firebase.initializeApp(firebaseConfig);
-  var fbDb = firebase.database();
-</script>
 <style>
 :root {
   --p: #FF6B35;
@@ -2293,68 +2278,32 @@ tr:hover td { background:rgba(255,255,255,.02) }
     function closeM(id) { document.getElementById(id).style.display = 'none' }
     function toast(msg, type) { var t = document.getElementById('toast'); t.textContent = msg; t.className = 'show ' + (type || ''); setTimeout(function () { t.className = '' }, 2500) }
 
-    // ── Customer Notification System (Firebase Realtime) ───────
+    // ── Customer Notification System (Google Sheets) ───────
     var _notifShown = {};
     var _tblNotifs = {};
-    // 🔥 Firebase Realtime Listener — แจ้งเตือนทันทีไม่ต้อง polling!
-    function startFirebaseNotifListener() {
-      var notifRef = fbDb.ref('notifications');
-      notifRef.on('child_added', function(snapshot) {
-        var n = snapshot.val();
-        if (!n || n.status === 'done') return;
-        var key = snapshot.key;
-        if (_notifShown[key]) return;
-        _notifShown[key] = true;
-        var isBill = (n.type === 'request_bill' || n.type === 'bill');
-        var icon = isBill ? '💰' : '🔔';
-        var title = isBill ? 'ขอเก็บเงิน!' : 'เรียกพนักงาน!';
-        var color = isBill ? '#27AE60' : '#E74C3C';
-        playNotifSound(isBill ? 'bill' : 'alert');
-        Swal.fire({
-          icon: isBill ? 'info' : 'warning',
-          title: icon + ' ' + title,
-          html: '<div style="font-size:28px;font-weight:bold;color:' + color + '">โต๊ะ ' + n.tableNo + '</div>' +
-                '<div style="margin-top:8px;color:#888">เวลา ' + (n.time || '') + '</div>',
-          confirmButtonText: '✅ รับทราบ',
-          confirmButtonColor: color,
-          allowOutsideClick: false
-        }).then(function() {
-          // Mark as done in Firebase
-          fbDb.ref('notifications/' + key).update({ status: 'done' });
-          // Also dismiss on Google Sheets (backward compat)
-          if (n.sheetRow) google.script.run.dismissNotification(n.sheetRow);
-          _tblNotifs[String(n.tableNo)] = { type: n.type, time: n.time };
-          loadTables();
-        });
-      });
-      // Listen for removed/done notifications
-      notifRef.on('child_changed', function(snapshot) {
-        var n = snapshot.val();
-        if (n && n.status === 'done') {
-          // Already handled
-        }
-      });
-    }
-    // Fallback: also check Google Sheets for old notifications
-    function pollNotificationsFallback() {
+    function pollNotifications() {
       google.script.run.withSuccessHandler(function(notifs) {
         if (!notifs || !notifs.length) return;
         notifs.forEach(function(n) {
-          var key = 'gs_' + n.row + '_' + n.time;
+          var key = n.row + '_' + n.time;
           if (_notifShown[key]) return;
           _notifShown[key] = true;
           var isBill = (n.type === 'request_bill' || n.type === 'bill');
+          var icon = isBill ? '💰' : '🔔';
+          var title = isBill ? 'ขอเก็บเงิน!' : 'เรียกพนักงาน!';
+          var color = isBill ? '#27AE60' : '#E74C3C';
           playNotifSound(isBill ? 'bill' : 'alert');
           Swal.fire({
             icon: isBill ? 'info' : 'warning',
-            title: (isBill ? '💰 ขอเก็บเงิน!' : '🔔 เรียกพนักงาน!'),
-            html: '<div style="font-size:28px;font-weight:bold;color:' + (isBill?'#27AE60':'#E74C3C') + '">โต๊ะ ' + n.tableNo + '</div>',
+            title: icon + ' ' + title,
+            html: '<div style="font-size:28px;font-weight:bold;color:' + color + '">โต๊ะ ' + n.tableNo + '</div>' +
+                  '<div style="margin-top:8px;color:#888">เวลา ' + n.time + '</div>',
             confirmButtonText: '✅ รับทราบ',
-            confirmButtonColor: isBill ? '#27AE60' : '#E74C3C',
+            confirmButtonColor: color,
             allowOutsideClick: false
           }).then(function() {
             google.script.run.dismissNotification(n.row);
-            _tblNotifs[String(n.tableNo)] = { type: n.type, time: n.time };
+            _tblNotifs[String(n.tableNo)] = { type: n.type, time: n.time, row: n.row };
             loadTables();
           });
         });
@@ -2365,10 +2314,8 @@ tr:hover td { background:rgba(255,255,255,.02) }
       toast('✅ โต๊ะ ' + tableNo + ' — ดำเนินการแล้ว', 'ok');
       loadTables();
     }
-    // Start Firebase listener + slow fallback polling (every 60s)
-    startFirebaseNotifListener();
-    setInterval(pollNotificationsFallback, 60000);
-    setTimeout(pollNotificationsFallback, 5000);
+    setInterval(pollNotifications, 30000);
+    setTimeout(pollNotifications, 3000);
 
     // ── SESSION TIMEOUT (8 ชั่วโมง) ──
     var _sessionStart = Date.now();
