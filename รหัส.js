@@ -298,14 +298,20 @@ function getProductsWithImages() {
   });
 }
 
-// Customer menu - fast load WITHOUT images
+// Customer menu - fast load with direct thumbnail URLs
 function getMenuForCustomer() {
   var prods = getProducts().map(function(p) {
+    var thumbUrl = '';
+    if (p.image_url) {
+      var fid = resolveDriveId_(p.image_url);
+      if (fid) thumbUrl = 'https://lh3.googleusercontent.com/d/' + fid + '=s400';
+    }
     return {
       id: p.id, name: p.name, category: p.category,
       price: p.price, unit: p.unit, emoji: p.emoji,
       spice_default: p.spice_default, options: p.options,
-      image_url: p.image_url || ''
+      image_url: p.image_url || '',
+      thumb_url: thumbUrl
     };
   });
   var sett = getSettings();
@@ -324,7 +330,7 @@ function getProductImage(productId) {
   return '';
 }
 
-// Fetch all images in background (for POS async loading)
+// Fetch all images — use direct thumbnail URLs for speed!
 function getAllImagesMap() {
   var prods = getProducts();
   var map = {};
@@ -332,7 +338,10 @@ function getAllImagesMap() {
     if (p.image_url) {
       try {
         var fid = resolveDriveId_(p.image_url);
-        if (fid) map[p.id] = getCachedImageData_(fid);
+        if (fid) {
+          // Return direct Google CDN thumbnail URL (no server processing needed!)
+          map[p.id] = 'https://lh3.googleusercontent.com/d/' + fid + '=s300';
+        }
       } catch(e) {}
     }
   });

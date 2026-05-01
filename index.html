@@ -1301,15 +1301,11 @@ tr:hover td { background:rgba(255,255,255,.02) }
     function loadImagesBackground() {
       google.script.run.withSuccessHandler(function(imagesMap) {
         if (!imagesMap) return;
-        var needsRender = false;
         products.forEach(function(p) {
-          if (imagesMap[p.id]) {
-            p.image_data = imagesMap[p.id];
-            needsRender = true;
-          }
+          if (imagesMap[p.id]) p.image_data = imagesMap[p.id];
         });
-        if (needsRender && curPage === 'pos') renderProds(); // Re-render if on POS page
-      }).getAllImagesMap();
+        renderProds();
+      }).withFailureHandler(function(){}).getAllImagesMap();
     }
     function applySettings() {
       var n = settings.shop_name || 'ลาบบ้านสวน';
@@ -1357,11 +1353,8 @@ tr:hover td { background:rgba(255,255,255,.02) }
         var ic = cart.find(function (c) { return c.id === p.id });
         var oos = p.stock <= 0;
         var visual;
-        if (p.image_data && p.image_data.indexOf('data:') === 0) {
-          visual = '<div class="pc-img-wrap"><img class="pc-img" src="' + p.image_data + '" alt="' + p.name + '" onerror="this.parentNode.innerHTML=\'<div class=em>' + (p.emoji || '🍽️') + '</div>\'"></div>';
-        } else if (p.image_url) {
-          // Placeholder while loading background image
-          visual = '<div class="pc-img-wrap skeleton" style="height:110px"></div>';
+        if (p.image_data) {
+          visual = '<div class="pc-img-wrap"><img class="pc-img" src="' + p.image_data + '" alt="' + p.name + '" loading="lazy" onerror="this.parentNode.innerHTML=\'<div class=em>' + (p.emoji || '🍽️') + '</div>\'"></div>';
         } else {
           visual = '<div class="em">' + (p.emoji || '🍽️') + '</div>';
         }
