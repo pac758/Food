@@ -2,8 +2,16 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ครัว - ลาบบ้านสวน</title>
+<!-- PWA / Add to Home Screen -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ครัว ลาบบ้านสวน">
+<meta name="theme-color" content="#0F0F1A">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FF6B35'/><text y='70' x='50' text-anchor='middle' font-size='55'>🔥</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🔥</text></svg>">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -38,6 +46,8 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--dk);color:var(-
 .k-btn.done{background:linear-gradient(135deg,var(--g),#27ae60);box-shadow:0 4px 14px rgba(46,204,113,.3)}
 .empty-msg{grid-column:1/-1;text-align:center;padding:60px;color:var(--t2);font-size:18px}
 .counter{background:var(--c);padding:4px 14px;border-radius:20px;font-size:12px;color:var(--t2);border:1px solid var(--b)}
+.fs-btn{background:var(--c);border:1px solid var(--b);color:var(--t2);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s}
+.fs-btn:hover{color:var(--p);border-color:var(--p)}
 </style>
 </head>
 <body>
@@ -48,6 +58,7 @@ body{font-family:'Sarabun',system-ui,sans-serif;background:var(--dk);color:var(-
     <div style="display:flex;gap:12px;align-items:center">
       <div class="counter" id="order-count">0 รายการ</div>
       <div class="header-status" id="last-update">กำลังโหลด...</div>
+      <button class="fs-btn" onclick="toggleFS()" title="เต็มจอ"><i class="bi bi-arrows-fullscreen"></i></button>
     </div>
   </div>
   <div class="k-grid" id="k-grid"></div>
@@ -106,6 +117,14 @@ function updateStatus(id, st) {
   }).withFailureHandler(function(e) {
     Swal.fire({ icon:'error', title:'ผิดพลาด', text:e&&e.message||'', confirmButtonColor:'#FF6B35' });
   }).updateOrderStatus(id, st);
+}
+
+function toggleFS() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => console.log(err));
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+  }
 }
 
 setInterval(loadOrders, 10000);

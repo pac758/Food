@@ -324,6 +324,21 @@ function getProductImage(productId) {
   return '';
 }
 
+// Fetch all images in background (for POS async loading)
+function getAllImagesMap() {
+  var prods = getProducts();
+  var map = {};
+  prods.forEach(function(p) {
+    if (p.image_url) {
+      try {
+        var fid = resolveDriveId_(p.image_url);
+        if (fid) map[p.id] = getCachedImageData_(fid);
+      } catch(e) {}
+    }
+  });
+  return map;
+}
+
 
 function getCategories() {
   return [...new Set(getProducts().map(p => p.category))];
@@ -1211,18 +1226,14 @@ function getTodayReport() {
   return getReport(today, today);
 }
 
-// ── All Data (initial load) — with preloaded images ──────────
+// ── All Data (initial load) — FAST LOAD (No images) ──────────
 function getAllData() {
   var prods = [];
   var sett = {};
-  try { prods = getProductsWithImages(); } catch (e) {
-    try { prods = getProducts(); } catch (e2) { }
-  }
+  try { prods = getProducts(); } catch (e) {}
   if (!prods.length) {
     try { setupSheets(); } catch (e) { }
-    try { prods = getProductsWithImages(); } catch (e) {
-      try { prods = getProducts(); } catch (e2) { }
-    }
+    try { prods = getProducts(); } catch (e) {}
   }
   try { sett = getSettings(); } catch (e) { }
   // Auto-fix Orders header
