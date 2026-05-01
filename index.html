@@ -614,12 +614,17 @@ tr:hover td { background:rgba(255,255,255,.02) }
 
 /* ══════════════ RESPONSIVE ══════════════ */
 @media(max-width:768px) {
-  #pos-right { width:100%; position:fixed; bottom:0; height:50vh; z-index:50; display:none }
-  #pos-right.open { display:flex }
+  #page-pos { flex-direction:column; padding-bottom:70px }
+  #pos-left { border-right:none }
+  #pos-right { width:100%; position:fixed; bottom:0; left:0; height:85vh; background:var(--dk2); z-index:150; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; border-radius:20px 20px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.5); border-top:1px solid var(--b) }
+  #pos-right.open { transform:translateY(0) }
+  #mobile-cart-btn { display:flex!important; position:fixed; bottom:0; left:0; right:0; background:linear-gradient(135deg,var(--p),#e05a20); padding:16px 20px calc(16px + env(safe-area-inset-bottom, 0px)); justify-content:space-between; color:#fff; font-size:16px; font-weight:700; z-index:100; cursor:pointer; box-shadow:0 -4px 20px rgba(0,0,0,.5) }
+  #mobile-close-cart { display:block!important; color:var(--t2); font-size:14px; cursor:pointer; padding:10px }
+  .cart-hd { border-bottom:1px solid var(--b); padding:16px }
   .tbl-grid { grid-template-columns:repeat(3,1fr) }
   .tab-btn { font-size:11px; padding:5px 10px }
   .rprt-grid { grid-template-columns:1fr }
-  #prod-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)) }
+  #prod-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); padding-bottom:20px }
 }
 
 /* ══════════════ NOTIFICATION BADGE PULSE ══════════════ */
@@ -724,10 +729,17 @@ tr:hover td { background:rgba(255,255,255,.02) }
       <div id="cat-bar"><button class="cat-pill active" onclick="fCat('all',this)">ทั้งหมด</button></div>
       <div id="search-bar"><input type="text" id="sq" placeholder="🔍 ค้นหาเมนู..." oninput="renderProds()"></div>
       <div id="prod-grid"></div>
+      <div id="mobile-cart-btn" style="display:none" onclick="document.getElementById('pos-right').classList.add('open')">
+        <div><i class="bi bi-cart3"></i> ตะกร้า <span style="background:rgba(255,255,255,.25);padding:2px 8px;border-radius:10px;font-size:13px;margin-left:6px" id="m-count">0</span></div>
+        <div id="m-total">฿0</div>
+      </div>
     </div>
     <div id="pos-right">
       <div class="cart-hd">
-        <h3>🛒 รายการสั่ง</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:10px">
+          <h3 style="margin:0">🛒 รายการสั่ง</h3>
+          <div id="mobile-close-cart" style="display:none" onclick="document.getElementById('pos-right').classList.remove('open')">✕ ปิด</div>
+        </div>
         <select id="order-type" style="margin-right:4px">
           <option value="dine-in">🪑 ทานที่ร้าน</option>
           <option value="take-away">🥡 กลับบ้าน</option>
@@ -1438,6 +1450,16 @@ tr:hover td { background:rgba(255,255,255,.02) }
       document.getElementById('v-grand').textContent = '฿' + grand;
       document.getElementById('checkout-btn').textContent = 'ชำระเงิน ฿' + grand;
       document.getElementById('send-kitchen-btn').textContent = '🔥 ส่งครัว ฿' + grand;
+      
+      // Update mobile cart button
+      var count = cart.reduce(function (s, i) { return s + i.qty }, 0);
+      var elCount = document.getElementById('m-count'); if(elCount) elCount.textContent = count;
+      var elTotal = document.getElementById('m-total'); if(elTotal) elTotal.textContent = '฿' + grand;
+      var mBtn = document.getElementById('mobile-cart-btn');
+      if (mBtn) {
+        if (count > 0) mBtn.style.transform = 'translateY(0)';
+        // To hide when empty, we could do: else mBtn.style.transform = 'translateY(100%)'
+      }
     }
     function selPay(btn, m) { selPay_ = m; document.querySelectorAll('.pay-b').forEach(function (b) { b.classList.remove('active') }); btn.classList.add('active') }
     function applyStudentDisc() {
