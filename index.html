@@ -1781,8 +1781,12 @@ tr:hover td { background:rgba(255,255,255,.02) }
         body += '</div>';
         acts = '';
         if (t.status === 'new') acts += '<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\'' + t.orderId + '\',\'cooking\',' + t.no + ')">🔥 เริ่มทำ</button>';
-        // เก็บเงิน available for all active statuses
-        acts += '<button class="btn-save" style="background:#2ECC71" onclick="completeTableUI(' + t.no + ')">💰 เก็บเงิน/ว่าง</button>';
+        // Show "Serve All" button when cooking
+        if (t.status === 'cooking') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\'' + t.orderId + '\',\'served\',' + t.no + ')">✅ เสิร์ฟทั้งหมด</button>';
+        // Show "Collect Payment" only when served (all items done)
+        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="completeTableUI(' + t.no + ')">💰 เก็บเงิน</button>';
+        // Always show "Add Order" for active tables
+        acts += '<button class="btn-save" style="background:#FF6B35" onclick="closeM(\'tbl-modal\');selectTable(' + t.no + ')">🛒 สั่งเพิ่ม</button>';
         acts += '<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
 
       }
