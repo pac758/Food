@@ -1837,6 +1837,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
                       '<div style="flex:1">' +
                         '<div style="font-size:13px;font-weight:500"><span class="item-icon">' + statusIcon + '</span> ' + i.qty + 'x ' + i.product_name + '</div>' +
                         (i.spice ? '<div style="font-size:10px;color:var(--t2)">🌶️' + i.spice + '</div>' : '') +
+                        (i.options ? i.options.split(',').map(function(o){ return '<div style="font-size:10px;color:var(--t2)">• ' + o.split(':')[0] + '</div>' }).join('') : '') +
                         (i.note ? '<div style="font-size:10px;color:var(--t2)">📝' + i.note + '</div>' : '') +
                       '</div>' +
                       '<div style="text-align:right;white-space:nowrap">' +

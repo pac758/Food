@@ -88,6 +88,7 @@ function render() {
     var itemsHtml = o.items.map(function(i) {
       var meta = [];
       if(i.spice) meta.push('🌶️ '+i.spice);
+      if(i.options) i.options.split(',').forEach(function(o){ meta.push('• '+o.split(':')[0]) });
       if(i.note) meta.push('📝 '+i.note);
       return '<div class="k-item"><div><span class="qty">'+i.qty+'x</span> '+i.product_name+
              (meta.length?'<div class="k-meta">'+meta.join(' | ')+'</div>':'')+
