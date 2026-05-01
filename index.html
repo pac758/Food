@@ -1573,7 +1573,11 @@ tr:hover td { background:rgba(255,255,255,.02) }
       rc += 'เลขที่: ' + r.orderId + '\n';
       rc += 'โต๊ะ: ' + (od.tableNo || '-') + '  ' + ({ ['dine-in']: 'ทานที่ร้าน', 'take-away': 'กลับบ้าน' }[od.orderType] || od.orderType) + '\n' + ln + '\n';
       od.items.forEach(function (i) {
-        rc += i.name + (i.spice ? ' (' + i.spice + ')' : '') + '\n';
+        var optStr = [];
+        if (i.spice) optStr.push(i.spice);
+        if (i.options) i.options.split(',').forEach(function(o){ optStr.push(o.split(':')[0]) });
+        var suffix = optStr.length ? ' (' + optStr.join(', ') + ')' : '';
+        rc += i.name + suffix + '\n';
         rc += ('  ' + i.qty + ' x ฿' + i.price).padEnd(w - 8) + '฿' + (i.qty * i.price) + '\n';
       });
       rc += ln + '\n' + ('ยอดรวม').padEnd(w - 8) + '฿' + od.total + '\n';
@@ -1973,8 +1977,13 @@ tr:hover td { background:rgba(255,255,255,.02) }
 
       items.forEach(function(i) {
         var mark = i.item_status === 'served' ? '✅' : (cancelUnserved ? '❌(ยกเลิก)' : '🔥');
-        rc += mark + ' ' + i.product_name + (i.spice ? ' (' + i.spice + ')' : '') + '\n';
-        rc += ('  ' + i.qty + ' x ฿' + (i.price || 0)).padEnd(w - 8) + '฿' + (i.subtotal || 0) + '\n';
+        var optStr = [];
+        if (i.spice) optStr.push(i.spice);
+        if (i.options) i.options.split(',').forEach(function(o){ optStr.push(o.split(':')[0]) });
+        var suffix = optStr.length ? ' (' + optStr.join(', ') + ')' : '';
+        rc += mark + ' ' + i.product_name + suffix + '\n';
+        var pr = i.unit_price !== undefined ? i.unit_price : (i.price || 0);
+        rc += ('  ' + i.qty + ' x ฿' + pr).padEnd(w - 8) + '฿' + (i.subtotal || 0) + '\n';
       });
       if (cancelUnserved) {
         rc += ln + '\n* ยกเลิกรายการที่ยังไม่ได้เสิร์ฟ\n';
