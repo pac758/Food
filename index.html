@@ -1435,7 +1435,11 @@ tr:hover td { background:rgba(255,255,255,.02) }
         var parts = p.options.split(',');
         parts.forEach(function (o) {
           var kv = o.split(':');
-          if (kv.length === 2) optsDiv.innerHTML += '<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:4px 0;cursor:pointer"><input type="checkbox" class="opt-cb" value="' + o + '"> ' + kv[0] + ' (+฿' + kv[1] + ')</label>';
+          var optName = kv[0].trim();
+          var optPrice = kv.length >= 2 ? Number(kv[1]) : 0;
+          if (optName) {
+            optsDiv.innerHTML += '<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:4px 0;cursor:pointer"><input type="checkbox" class="opt-cb" value="' + optName + ':' + optPrice + '"> ' + optName + (optPrice > 0 ? ' (+฿' + optPrice + ')' : '') + '</label>';
+          }
         });
       }
       document.getElementById('item-note').value = '';
