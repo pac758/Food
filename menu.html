@@ -624,6 +624,8 @@ function renderTrackingData(r) {
         '<div style="font-size:24px">' + icon + '</div>' +
         '<div style="flex:1"><div style="font-weight:600;font-size:14px">' + i.qty + 'x ' + i.name + '</div>' +
         (i.spice ? '<div style="font-size:11px;color:var(--t2)">🌶️ ' + i.spice + '</div>' : '') +
+        (i.options ? i.options.split(',').map(function(o){ return '<div style="font-size:11px;color:var(--t2)">• ' + o.split(':')[0] + '</div>' }).join('') : '') +
+        (i.note ? '<div style="font-size:11px;color:var(--t2)">📝 ' + i.note + '</div>' : '') +
         '</div>' +
         '<div style="text-align:right"><div style="font-weight:700;color:var(--p)">฿' + i.subtotal + '</div>' +
         '<div style="font-size:10px;color:' + stColor + '">' + stText + '</div></div></div>';
