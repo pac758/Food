@@ -1783,9 +1783,9 @@ tr:hover td { background:rgba(255,255,255,.02) }
         if (t.status === 'new') acts += '<button class="btn-save" style="background:#F39C12" onclick="updateTblStatus(\'' + t.orderId + '\',\'cooking\',' + t.no + ')">🔥 เริ่มทำ</button>';
         // Show "Serve All" button when cooking
         if (t.status === 'cooking') acts += '<button class="btn-save" style="background:#3498DB" onclick="updateTblStatus(\'' + t.orderId + '\',\'served\',' + t.no + ')">✅ เสิร์ฟทั้งหมด</button>';
-        // Show "Collect Payment" only when served (all items done)
-        if (t.status === 'served') acts += '<button class="btn-save" style="background:#2ECC71" onclick="completeTableUI(' + t.no + ')">💰 เก็บเงิน</button>';
-        // Always show "Add Order" for active tables
+        // Collect Payment - available at any active status (handles partial billing)
+        acts += '<button class="btn-save" style="background:#2ECC71" onclick="completeTableUI(' + t.no + ')">💰 เก็บเงิน</button>';
+        // Add more items
         acts += '<button class="btn-save" style="background:#FF6B35" onclick="closeM(\'tbl-modal\');selectTable(' + t.no + ')">🛒 สั่งเพิ่ม</button>';
         acts += '<button class="btn-cancel" onclick="closeM(\'tbl-modal\')">ปิด</button>';
 
@@ -1930,24 +1930,24 @@ tr:hover td { background:rgba(255,255,255,.02) }
           }).then(function(result) {
             if (result.isConfirmed) {
               // Bill ALL items
-              showTableReceipt(tblNo, items, orders, allTotal);
+              showTableReceipt(tblNo, items, orders, allTotal, false);
             } else if (result.isDenied) {
-              // Bill ONLY served items
-              showTableReceipt(tblNo, served, orders, servedTotal);
+              // Bill ONLY served items - mark unserved as cancelled
+              showTableReceipt(tblNo, served, orders, servedTotal, true);
             }
           });
         } else {
           // All served — bill normally
           var grandTotal = 0;
           orders.forEach(function(o){ grandTotal += o.total || 0; });
-          showTableReceipt(tblNo, items, orders, grandTotal);
+          showTableReceipt(tblNo, items, orders, grandTotal, false);
         }
       }).withFailureHandler(function(e) {
         Swal.fire({ icon:'error', title:'โหลดรายการไม่ได้', text:e&&e.message||'', confirmButtonColor:'#FF6B35' });
       }).getTableDetailByTableNo(tblNo);
     }
 
-    function showTableReceipt(tblNo, items, orders, grandTotal) {
+    function showTableReceipt(tblNo, items, orders, grandTotal, cancelUnserved) {
       var w = 32, ln = '─'.repeat(w);
       var ct = function(s) { return ' '.repeat(Math.max(0, Math.floor((w - s.length) / 2))) + s };
       var shopName = (settings && settings.shop_name) || 'ลาบบ้านสวน';
@@ -1960,10 +1960,13 @@ tr:hover td { background:rgba(255,255,255,.02) }
       rc += 'โต๊ะ: ' + tblNo + '  (' + orders.length + ' ออร์เดอร์)\n' + ln + '\n';
 
       items.forEach(function(i) {
-        var mark = i.item_status === 'served' ? '✅' : '🔥';
+        var mark = i.item_status === 'served' ? '✅' : (cancelUnserved ? '❌(ยกเลิก)' : '🔥');
         rc += mark + ' ' + i.product_name + (i.spice ? ' (' + i.spice + ')' : '') + '\n';
         rc += ('  ' + i.qty + ' x ฿' + (i.price || 0)).padEnd(w - 8) + '฿' + (i.subtotal || 0) + '\n';
       });
+      if (cancelUnserved) {
+        rc += ln + '\n* ยกเลิกรายการที่ยังไม่ได้เสิร์ฟ\n';
+      }
       rc += ln + '\n' + ('ยอดสุทธิ').padEnd(w - 10) + '฿' + grandTotal + '\n';
       rc += ln + '\n' + ct('ขอบคุณที่อุดหนุน 🙏') + '\n' + ct('มาอีกนะครับ/ค่ะ ~') + '\n';
       if (settings && settings.shop_phone) rc += ct('📱 ' + settings.shop_phone) + '\n';
@@ -1987,7 +1990,7 @@ tr:hover td { background:rgba(255,255,255,.02) }
         loadTables();
       }).withFailureHandler(function(e) {
         toast('❌ เก็บเงินไม่สำเร็จ: ' + (e&&e.message||''), 'err');
-      }).completeTable(tblNo);
+      }).completeTable(tblNo, cancelUnserved);
     }
 
     function updateTblStatus(oid, st, tblNo) {

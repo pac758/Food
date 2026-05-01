@@ -582,13 +582,15 @@ function updateOrderStatus(orderId, status, tableNo) {
 }
 
 // Complete ALL active orders for a table at once
-function completeTable(tableNo) {
+function completeTable(tableNo, cancelUnserved) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     var today = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
     var sh = getSheet_(SHEET_ORDERS);
     var data = sh.getDataRange().getValues();
+    var iSh = getSheet_(SHEET_ITEMS);
+    var iData = iSh.getDataRange().getValues();
     var tblStr = String(tableNo).trim();
     var updated = 0;
     
@@ -599,6 +601,24 @@ function completeTable(tableNo) {
       var rowStatus = String(data[i][12]);
       
       if (String(rowDate) === today && rowTbl === tblStr && ['new', 'cooking', 'served'].indexOf(rowStatus) !== -1) {
+        var oid = String(data[i][0]);
+        
+        // If partial billing is selected, cancel unserved items and update order total
+        if (cancelUnserved) {
+          var newTotal = 0;
+          for (var j = 1; j < iData.length; j++) {
+            if (String(iData[j][0]) === oid) {
+              if (String(iData[j][9]) === 'served') {
+                newTotal += Number(iData[j][8]) || 0; // add subtotal
+              } else {
+                iSh.getRange(j + 1, 10).setValue('cancelled'); // mark unserved as cancelled
+              }
+            }
+          }
+          // Update order total in Orders sheet (column I = index 8)
+          sh.getRange(i + 1, 9).setValue(newTotal);
+        }
+
         sh.getRange(i + 1, 13).setValue('completed');
         updated++;
       }
