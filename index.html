@@ -8,6 +8,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyAyRVeRtoRn5XD2aZbFWCmYp0Sz4uf1Ld0",
+    authDomain: "posfood-83d3e.firebaseapp.com",
+    databaseURL: "https://posfood-83d3e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "posfood-83d3e",
+    storageBucket: "posfood-83d3e.firebasestorage.app",
+    messagingSenderId: "924445525936",
+    appId: "1:924445525936:web:8e384e1eff3bf98553b875"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var fbDb = firebase.database();
+</script>
 <style>
 :root {
   --p: #FF6B35;
@@ -1813,56 +1828,99 @@ tr:hover td { background:rgba(255,255,255,.02) }
       }).updateItemStatus(orderId, itemRow, newStatus);
     }
 
-    // Complete ALL orders for a table — with receipt
+    // Complete ALL orders for a table — with receipt + partial billing
     function completeTableUI(tblNo) {
       closeM('tbl-modal');
-      // First load all items for receipt
       Swal.fire({ title:'กำลังโหลดรายการ...', allowOutsideClick:true, didOpen:function(){ Swal.showLoading() } });
       google.script.run.withSuccessHandler(function(detail) {
         Swal.close();
-        // Build receipt
         var items = (detail && detail.allItems) || [];
         var orders = (detail && detail.orders) || [];
-        var grandTotal = 0;
-        orders.forEach(function(o){ grandTotal += o.total || 0; });
+        var served = items.filter(function(i){ return i.item_status === 'served' });
+        var unserved = items.filter(function(i){ return i.item_status !== 'served' });
 
-        var w = 32, ln = '─'.repeat(w);
-        var ct = function(s) { return ' '.repeat(Math.max(0, Math.floor((w - s.length) / 2))) + s };
-        var shopName = (settings && settings.shop_name) || 'ลาบบ้านสวน';
-        var now = new Date();
-        var dateStr = now.toLocaleDateString('th-TH');
-        var timeStr = now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
-
-        var rc = ct(shopName) + '\n' + ct('ใบเสร็จรับเงิน') + '\n' + ln + '\n';
-        rc += 'วันที่: ' + dateStr + '  เวลา: ' + timeStr + '\n';
-        rc += 'โต๊ะ: ' + tblNo + '  (' + orders.length + ' ออร์เดอร์)\n' + ln + '\n';
-
-        items.forEach(function(i) {
-          rc += i.product_name + (i.spice ? ' (' + i.spice + ')' : '') + '\n';
-          rc += ('  ' + i.qty + ' x ฿' + (i.price || 0)).padEnd(w - 8) + '฿' + (i.subtotal || 0) + '\n';
-        });
-        rc += ln + '\n' + ('ยอดสุทธิ').padEnd(w - 10) + '฿' + grandTotal + '\n';
-        rc += ln + '\n' + ct('ขอบคุณที่อุดหนุน 🙏') + '\n' + ct('มาอีกนะครับ/ค่ะ ~') + '\n';
-        if (settings && settings.shop_phone) rc += ct('📱 ' + settings.shop_phone) + '\n';
-
-        document.getElementById('receipt-box').textContent = rc;
-        document.getElementById('qr-area').style.display = 'none';
-        document.getElementById('receipt-modal').style.display = 'flex';
-
-        // Now complete the table in background
-        google.script.run.withSuccessHandler(function(r) {
-          if (r && r.success) {
-            delete _tblNotifs[String(tblNo)];
-            toast('💰 เก็บเงินเรียบร้อย — ' + r.updatedOrders + ' ออร์เดอร์', 'ok');
-          }
-          loadTables();
-        }).withFailureHandler(function(e) {
-          toast('❌ เก็บเงินไม่สำเร็จ: ' + (e&&e.message||''), 'err');
-        }).completeTable(tblNo);
-
+        if (unserved.length > 0) {
+          // Has unserved items — ask staff what to do
+          var servedTotal = served.reduce(function(s,i){ return s + (Number(i.subtotal)||0) },0);
+          var allTotal = 0;
+          orders.forEach(function(o){ allTotal += o.total || 0; });
+          Swal.fire({
+            icon: 'warning',
+            title: '⚠️ มีรายการยังไม่เสิร์ฟ',
+            html: '<div style="text-align:left;font-size:14px">' +
+              '<div style="margin-bottom:8px">✅ เสิร์ฟแล้ว: <b>' + served.length + '</b> รายการ (฿' + servedTotal + ')</div>' +
+              '<div style="margin-bottom:12px">🔥 ยังไม่เสิร์ฟ: <b style="color:#E74C3C">' + unserved.length + '</b> รายการ</div>' +
+              '<div style="font-size:12px;color:#999;border-top:1px solid #eee;padding-top:8px">' +
+              unserved.map(function(i){ return '• ' + i.qty + 'x ' + i.product_name }).join('<br>') +
+              '</div></div>',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: '💰 คิดทั้งหมด (฿' + allTotal + ')',
+            denyButtonText: '✅ คิดเฉพาะที่เสิร์ฟ (฿' + servedTotal + ')',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#FF6B35',
+            denyButtonColor: '#3498DB'
+          }).then(function(result) {
+            if (result.isConfirmed) {
+              // Bill ALL items
+              showTableReceipt(tblNo, items, orders, allTotal);
+            } else if (result.isDenied) {
+              // Bill ONLY served items
+              showTableReceipt(tblNo, served, orders, servedTotal);
+            }
+          });
+        } else {
+          // All served — bill normally
+          var grandTotal = 0;
+          orders.forEach(function(o){ grandTotal += o.total || 0; });
+          showTableReceipt(tblNo, items, orders, grandTotal);
+        }
       }).withFailureHandler(function(e) {
         Swal.fire({ icon:'error', title:'โหลดรายการไม่ได้', text:e&&e.message||'', confirmButtonColor:'#FF6B35' });
       }).getTableDetailByTableNo(tblNo);
+    }
+
+    function showTableReceipt(tblNo, items, orders, grandTotal) {
+      var w = 32, ln = '─'.repeat(w);
+      var ct = function(s) { return ' '.repeat(Math.max(0, Math.floor((w - s.length) / 2))) + s };
+      var shopName = (settings && settings.shop_name) || 'ลาบบ้านสวน';
+      var now = new Date();
+      var dateStr = now.toLocaleDateString('th-TH');
+      var timeStr = now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+
+      var rc = ct(shopName) + '\n' + ct('ใบเสร็จรับเงิน') + '\n' + ln + '\n';
+      rc += 'วันที่: ' + dateStr + '  เวลา: ' + timeStr + '\n';
+      rc += 'โต๊ะ: ' + tblNo + '  (' + orders.length + ' ออร์เดอร์)\n' + ln + '\n';
+
+      items.forEach(function(i) {
+        var mark = i.item_status === 'served' ? '✅' : '🔥';
+        rc += mark + ' ' + i.product_name + (i.spice ? ' (' + i.spice + ')' : '') + '\n';
+        rc += ('  ' + i.qty + ' x ฿' + (i.price || 0)).padEnd(w - 8) + '฿' + (i.subtotal || 0) + '\n';
+      });
+      rc += ln + '\n' + ('ยอดสุทธิ').padEnd(w - 10) + '฿' + grandTotal + '\n';
+      rc += ln + '\n' + ct('ขอบคุณที่อุดหนุน 🙏') + '\n' + ct('มาอีกนะครับ/ค่ะ ~') + '\n';
+      if (settings && settings.shop_phone) rc += ct('📱 ' + settings.shop_phone) + '\n';
+
+      document.getElementById('receipt-box').textContent = rc;
+      // Show PromptPay QR if available
+      if (settings && settings.promptpay_id) {
+        document.getElementById('qr-area').style.display = 'block';
+        document.getElementById('qr-img').src = 'https://promptpay.io/' + settings.promptpay_id + '/' + grandTotal + '.png';
+      } else {
+        document.getElementById('qr-area').style.display = 'none';
+      }
+      document.getElementById('receipt-modal').style.display = 'flex';
+
+      // Complete the table in background
+      google.script.run.withSuccessHandler(function(r) {
+        if (r && r.success) {
+          delete _tblNotifs[String(tblNo)];
+          toast('💰 เก็บเงินเรียบร้อย — ' + r.updatedOrders + ' ออร์เดอร์', 'ok');
+        }
+        loadTables();
+      }).withFailureHandler(function(e) {
+        toast('❌ เก็บเงินไม่สำเร็จ: ' + (e&&e.message||''), 'err');
+      }).completeTable(tblNo);
     }
 
     function updateTblStatus(oid, st, tblNo) {
@@ -2235,57 +2293,82 @@ tr:hover td { background:rgba(255,255,255,.02) }
     function closeM(id) { document.getElementById(id).style.display = 'none' }
     function toast(msg, type) { var t = document.getElementById('toast'); t.textContent = msg; t.className = 'show ' + (type || ''); setTimeout(function () { t.className = '' }, 2500) }
 
-    // ── Customer Notification System ───────────────────────────
+    // ── Customer Notification System (Firebase Realtime) ───────
     var _notifShown = {};
-    var _tblNotifs = {}; // table notifications stored after dismiss
-    function pollNotifications() {
+    var _tblNotifs = {};
+    // 🔥 Firebase Realtime Listener — แจ้งเตือนทันทีไม่ต้อง polling!
+    function startFirebaseNotifListener() {
+      var notifRef = fbDb.ref('notifications');
+      notifRef.on('child_added', function(snapshot) {
+        var n = snapshot.val();
+        if (!n || n.status === 'done') return;
+        var key = snapshot.key;
+        if (_notifShown[key]) return;
+        _notifShown[key] = true;
+        var isBill = (n.type === 'request_bill' || n.type === 'bill');
+        var icon = isBill ? '💰' : '🔔';
+        var title = isBill ? 'ขอเก็บเงิน!' : 'เรียกพนักงาน!';
+        var color = isBill ? '#27AE60' : '#E74C3C';
+        playNotifSound(isBill ? 'bill' : 'alert');
+        Swal.fire({
+          icon: isBill ? 'info' : 'warning',
+          title: icon + ' ' + title,
+          html: '<div style="font-size:28px;font-weight:bold;color:' + color + '">โต๊ะ ' + n.tableNo + '</div>' +
+                '<div style="margin-top:8px;color:#888">เวลา ' + (n.time || '') + '</div>',
+          confirmButtonText: '✅ รับทราบ',
+          confirmButtonColor: color,
+          allowOutsideClick: false
+        }).then(function() {
+          // Mark as done in Firebase
+          fbDb.ref('notifications/' + key).update({ status: 'done' });
+          // Also dismiss on Google Sheets (backward compat)
+          if (n.sheetRow) google.script.run.dismissNotification(n.sheetRow);
+          _tblNotifs[String(n.tableNo)] = { type: n.type, time: n.time };
+          loadTables();
+        });
+      });
+      // Listen for removed/done notifications
+      notifRef.on('child_changed', function(snapshot) {
+        var n = snapshot.val();
+        if (n && n.status === 'done') {
+          // Already handled
+        }
+      });
+    }
+    // Fallback: also check Google Sheets for old notifications
+    function pollNotificationsFallback() {
       google.script.run.withSuccessHandler(function(notifs) {
         if (!notifs || !notifs.length) return;
         notifs.forEach(function(n) {
-          var key = n.row + '_' + n.time;
+          var key = 'gs_' + n.row + '_' + n.time;
           if (_notifShown[key]) return;
           _notifShown[key] = true;
           var isBill = (n.type === 'request_bill' || n.type === 'bill');
-          var icon = isBill ? '💰' : '🔔';
-          var title = isBill ? 'ขอเก็บเงิน!' : 'เรียกพนักงาน!';
-          var color = isBill ? '#27AE60' : '#E74C3C';
-          // Play notification sound
           playNotifSound(isBill ? 'bill' : 'alert');
           Swal.fire({
             icon: isBill ? 'info' : 'warning',
-            title: icon + ' ' + title,
-            html: '<div style="font-size:28px;font-weight:bold;color:' + color + '">โต๊ะ ' + n.tableNo + '</div>' +
-                  '<div style="margin-top:8px;color:#888">เวลา ' + n.time + '</div>',
+            title: (isBill ? '💰 ขอเก็บเงิน!' : '🔔 เรียกพนักงาน!'),
+            html: '<div style="font-size:28px;font-weight:bold;color:' + (isBill?'#27AE60':'#E74C3C') + '">โต๊ะ ' + n.tableNo + '</div>',
             confirmButtonText: '✅ รับทราบ',
-            confirmButtonColor: color,
+            confirmButtonColor: isBill ? '#27AE60' : '#E74C3C',
             allowOutsideClick: false
           }).then(function() {
-            // Dismiss on server
             google.script.run.dismissNotification(n.row);
-            // Store as badge on table card
-            _tblNotifs[String(n.tableNo)] = { type: n.type, time: n.time, row: n.row };
-            // Refresh table grid to show badge
-            if (document.getElementById('page-tables') && document.getElementById('page-tables').classList.contains('active')) {
-              loadTables();
-            } else {
-              // Force re-render if cached
-              var g = document.getElementById('tbl-grid');
-              if (g && _tblCache.length) {
-                loadTables();
-              }
-            }
+            _tblNotifs[String(n.tableNo)] = { type: n.type, time: n.time };
+            loadTables();
           });
         });
       }).withFailureHandler(function(){}).getNotifications();
     }
-    // Clear notification badge on table card
     function clearTblNotif(tableNo) {
       delete _tblNotifs[String(tableNo)];
       toast('✅ โต๊ะ ' + tableNo + ' — ดำเนินการแล้ว', 'ok');
       loadTables();
     }
-    setInterval(pollNotifications, 30000);
-    setTimeout(pollNotifications, 3000);
+    // Start Firebase listener + slow fallback polling (every 60s)
+    startFirebaseNotifListener();
+    setInterval(pollNotificationsFallback, 60000);
+    setTimeout(pollNotificationsFallback, 5000);
 
     // ── SESSION TIMEOUT (8 ชั่วโมง) ──
     var _sessionStart = Date.now();
